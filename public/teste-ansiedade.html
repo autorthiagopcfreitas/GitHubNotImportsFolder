@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Ansiedade - Kerem Kesia</title>
+    <!-- Link to the favicon -->
+    <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Passions+Conflict&display=swap" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        .question-container {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .option-item {
+            padding: 0.75rem;
+            border-radius: 5px;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .option-item:hover {
+            background-color: #e9ecef;
+        }
+        
+        .option-item.selected {
+            background-color: #cfe2ff;
+            border-color: #9ec5fe;
+        }
+        
+        .progress {
+            height: 10px;
+            margin-bottom: 2rem;
+        }
+        
+        .result-container {
+            padding: 2rem;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            margin-top: 2rem;
+        }
+        
+        .result-mild {
+            background-color: #d1e7dd;
+            border-color: #badbcc;
+        }
+        
+        .result-moderate {
+            background-color: #fff3cd;
+            border-color: #ffecb5;
+        }
+        
+        .result-severe {
+            background-color: #f8d7da;
+            border-color: #f5c2c7;
+        }
+        
+        .recommendation {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 5px;
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="index.html">
+                <video autoplay muted loop playsinline height="40" class="me-2" style="border-radius: 4px;">
+                    <source src="assets/psy-animated-logo-2.mp4" type="video/mp4">
+                    Seu navegador não suporta vídeos.
+                </video>
+                <span>Psicóloga Kerem Kesia</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Início</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.html">Dashboard</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5 pt-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="mb-0"><i class="fas fa-brain me-2"></i>Teste de Ansiedade</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="test-intro">
+                            <p class="lead">Este teste foi desenvolvido para ajudar a identificar sintomas de ansiedade. Não é um diagnóstico clínico, mas pode fornecer insights sobre seu bem-estar emocional.</p>
+                            
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Instruções:</strong> Responda às perguntas considerando como você se sentiu nas últimas duas semanas. Seja honesto(a) para obter resultados mais precisos.
+                            </div>
+                            
+                            <button id="start-test" class="btn btn-primary btn-lg mt-3">
+                                <i class="fas fa-play-circle me-2"></i>Iniciar Teste
+                            </button>
+                        </div>
+                        
+                        <div id="test-container" style="display: none;">
+                            <div class="progress">
+                                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            
+                            <div id="question-container"></div>
+                            
+                            <div class="d-flex justify-content-between mt-4">
+                                <button id="prev-btn" class="btn btn-secondary" disabled>
+                                    <i class="fas fa-arrow-left me-2"></i>Anterior
+                                </button>
+                                <button id="next-btn" class="btn btn-primary">
+                                    Próxima<i class="fas fa-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="results-container" style="display: none;">
+                            <h3 class="text-center mb-4">Resultado do Teste</h3>
+                            
+                            <div id="score-display" class="text-center mb-4">
+                                <div class="display-4 mb-2" id="score-value">0</div>
+                                <div id="score-label" class="lead">Pontuação</div>
+                            </div>
+                            
+                            <div id="result-interpretation" class="result-container">
+                                <!-- Será preenchido via JavaScript -->
+                            </div>
+                            
+                            <div class="text-center mt-4">
+                                <button id="restart-btn" class="btn btn-outline-primary me-2">
+                                    <i class="fas fa-redo me-2"></i>Refazer Teste
+                                </button>
+                                <a href="dashboard.html" class="btn btn-primary">
+                                    <i class="fas fa-home me-2"></i>Voltar ao Dashboard
+                                </a>
+                                <button id="share-btn" class="btn btn-outline-success ms-2" onclick="shareResults()">
+                                    <i class="fas fa-share-alt me-2"></i>Compartilhar
+                                </button>
+                            </div>
+                            
+                            <script>
+                                function shareResults() {
+                                    const score = document.getElementById('score-value').textContent;
+                                    const level = score <= 4 ? 'mínima' : score <= 9 ? 'moderada' : 'severa';
+                                    
+                                    const text = `Acabei de fazer o Teste de Ansiedade e meu resultado foi: Ansiedade ${level} (${score} pontos). Faça o seu teste também!`;
+                                    
+                                    if (navigator.share) {
+                                        navigator.share({
+                                            title: 'Meu Resultado - Teste de Ansiedade',
+                                            text: text,
+                                            url: window.location.href
+                                        })
+                                        .catch(error => console.error('Erro ao compartilhar:', error));
+                                    } else {
+                                        // Fallback para navegadores que não suportam a API Web Share
+                                        const textarea = document.createElement('textarea');
+                                        textarea.value = text;
+                                        document.body.appendChild(textarea);
+                                        textarea.select();
+                                        document.execCommand('copy');
+                                        document.body.removeChild(textarea);
+                                        alert('Resultado copiado para a área de transferência!');
+                                    }
+                                }
+                            </script>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white mt-5 py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Kerem Kesia</h5>
+                    <p>Psicóloga Clínica - CRP:09/15349</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>© 2025 Todos os direitos reservados</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-init.js"></script>
+    
+    <!-- Test Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Perguntas do teste de ansiedade
+            const questions = [
+                {
+                    question: "Com que frequência você se sente nervoso(a), ansioso(a) ou tenso(a)?",
+                    options: [
+                        "Nunca",
+                        "Alguns dias",
+                        "Mais da metade dos dias",
+                        "Quase todos os dias"
+                    ]
+                },
+                {
+                    question: "Com que frequência você não consegue parar de se preocupar ou controlar as preocupações?",
+                    options: [
+                        "Nunca",
+                        "Alguns dias",
+                        "Mais da metade dos dias",
+                        "Quase todos os dias"
+                    ]
+                },
+                {
+                    question: "Com que frequência você se preocupa demais com diferentes coisas?",
+                    options: [
+                        "Nunca",
+                        "Alguns dias",
+                        "Mais da metade dos dias",
+                        "Quase todos os dias"
+                    ]
+                },
+                {
+                    question: "Com que frequência você tem dificuldade para relaxar?",
+                    options: [
+                        "Nunca",
+                        "Alguns dias",
+                        "Mais da metade dos dias",
+                        "Quase todos os dias"
+                    ]
+                },
+                {
+                    question: "Com que frequência você fica tão agitado(a) que é difícil ficar parado(a)?",
+                    options: [
+                        "Nunca",
+                        "Alguns dias",
+                        "Mais da metade dos dias",
+                        "Quase todos os dias"
+                    ]
+                },
+                {
+                    question: "Com que frequência você fica facilmente irritado(a) ou irritável?",
+                    options: [
+                        "Nunca",
+                        "Alguns dias",
+                        "Mais da metade dos dias",
+                        "Quase todos os dias"
+                    ]
+                },
+                {
+                    question: "Com que frequência você sente medo, como se algo terrível pudesse acontecer?",
+                    options: [
+                        "Nunca",
+                        "Alguns dias",
+                        "Mais da metade dos dias",
+                        "Quase todos os dias"
+                    ]
+                }
+            ];
+            
+            // Elementos do DOM
+            const startBtn = document.getElementById('start-test');
+            const testIntro = document.getElementById('test-intro');
+            const testContainer = document.getElementById('test-container');
+            const questionContainer = document.getElementById('question-container');
+            const progressBar = document.getElementById('progress-bar');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const resultsContainer = document.getElementById('results-container');
+            const scoreValue = document.getElementById('score-value');
+            const resultInterpretation = document.getElementById('result-interpretation');
+            const restartBtn = document.getElementById('restart-btn');
+            
+            // Variáveis de estado
+            let currentQuestion = 0;
+            let answers = Array(questions.length).fill(null);
+            
+            // Iniciar o teste
+            startBtn.addEventListener('click', function() {
+                testIntro.style.display = 'none';
+                testContainer.style.display = 'block';
+                showQuestion(0);
+            });
+            
+            // Mostrar pergunta atual
+            function showQuestion(index) {
+                currentQuestion = index;
+                
+                // Atualizar progresso
+                const progress = ((index + 1) / questions.length) * 100;
+                progressBar.style.width = `${progress}%`;
+                progressBar.setAttribute('aria-valuenow', progress);
+                
+                // Atualizar botões de navegação
+                prevBtn.disabled = index === 0;
+                nextBtn.textContent = index === questions.length - 1 ? 'Ver Resultados' : 'Próxima';
+                nextBtn.innerHTML = index === questions.length - 1 ? 'Ver Resultados<i class="fas fa-chart-bar ms-2"></i>' : 'Próxima<i class="fas fa-arrow-right ms-2"></i>';
+                
+                // Criar elemento da pergunta
+                const questionData = questions[index];
+                const questionElement = document.createElement('div');
+                questionElement.className = 'question-container';
+                
+                const questionTitle = document.createElement('h4');
+                questionTitle.textContent = `${index + 1}. ${questionData.question}`;
+                questionElement.appendChild(questionTitle);
+                
+                const optionsContainer = document.createElement('div');
+                optionsContainer.className = 'options-container';
+                
+                questionData.options.forEach((option, optionIndex) => {
+                    const optionItem = document.createElement('div');
+                    optionItem.className = 'option-item';
+                    if (answers[index] === optionIndex) {
+                        optionItem.classList.add('selected');
+                    }
+                    
+                    optionItem.textContent = option;
+                    optionItem.addEventListener('click', function() {
+                        // Remover seleção anterior
+                        const selectedOptions = optionsContainer.querySelectorAll('.selected');
+                        selectedOptions.forEach(item => item.classList.remove('selected'));
+                        
+                        // Selecionar nova opção
+                        optionItem.classList.add('selected');
+                        answers[index] = optionIndex;
+                        
+                        // Habilitar botão próximo se for a última pergunta
+                        if (index === questions.length - 1) {
+                            nextBtn.disabled = false;
+                        }
+                    });
+                    
+                    optionsContainer.appendChild(optionItem);
+                });
+                
+                questionElement.appendChild(optionsContainer);
+                
+                // Limpar e adicionar nova pergunta
+                questionContainer.innerHTML = '';
+                questionContainer.appendChild(questionElement);
+                
+                // Verificar se o botão próximo deve estar desabilitado
+                nextBtn.disabled = index === questions.length - 1 && answers[index] === null;
+            }
+            
+            // Botão anterior
+            prevBtn.addEventListener('click', function() {
+                if (currentQuestion > 0) {
+                    showQuestion(currentQuestion - 1);
+                }
+            });
+            
+            // Botão próximo
+            nextBtn.addEventListener('click', function() {
+                if (currentQuestion < questions.length - 1) {
+                    // Se a pergunta atual não foi respondida, não avançar
+                    if (answers[currentQuestion] === null) {
+                        alert('Por favor, selecione uma resposta antes de continuar.');
+                        return;
+                    }
+                    
+                    showQuestion(currentQuestion + 1);
+                } else {
+                    // Verificar se todas as perguntas foram respondidas
+                    const allAnswered = answers.every(answer => answer !== null);
+                    
+                    if (!allAnswered) {
+                        alert('Por favor, responda todas as perguntas antes de ver os resultados.');
+                        
+                        // Encontrar a primeira pergunta não respondida
+                        const firstUnanswered = answers.findIndex(answer => answer === null);
+                        if (firstUnanswered !== -1) {
+                            showQuestion(firstUnanswered);
+                        }
+                        
+                        return;
+                    }
+                    
+                    showResults();
+                }
+            });
+            
+            // Mostrar resultados
+            function showResults() {
+                testContainer.style.display = 'none';
+                resultsContainer.style.display = 'block';
+                
+                // Calcular pontuação (0-3 para cada resposta)
+                const score = answers.reduce((total, answer) => total + answer, 0);
+                
+                // Exibir pontuação
+                scoreValue.textContent = score;
+                
+                // Interpretar resultado
+                let interpretation = '';
+                let resultClass = '';
+                
+                if (score <= 4) {
+                    interpretation = `
+                        <h4 class="text-success mb-3">Ansiedade Mínima</h4>
+                        <p>Seus sintomas de ansiedade são mínimos. Isso é um bom sinal! Continue mantendo hábitos saudáveis para preservar seu bem-estar emocional.</p>
+                        
+                        <div class="recommendation">
+                            <h5>Recomendações:</h5>
+                            <ul>
+                                <li>Mantenha uma rotina de exercícios físicos</li>
+                                <li>Pratique técnicas de relaxamento como meditação</li>
+                                <li>Mantenha uma alimentação equilibrada</li>
+                                <li>Cultive relacionamentos saudáveis</li>
+                            </ul>
+                        </div>
+                    `;
+                    resultClass = 'result-mild';
+                } else if (score <= 9) {
+                    interpretation = `
+                        <h4 class="text-warning mb-3">Ansiedade Leve a Moderada</h4>
+                        <p>Você apresenta sintomas de ansiedade leve a moderada. Isso pode afetar sua qualidade de vida, mas existem estratégias que podem ajudar a gerenciar esses sintomas.</p>
+                        
+                        <div class="recommendation">
+                            <h5>Recomendações:</h5>
+                            <ul>
+                                <li>Pratique técnicas de respiração profunda diariamente</li>
+                                <li>Considere a prática de mindfulness ou meditação</li>
+                                <li>Estabeleça uma rotina de sono regular</li>
+                                <li>Limite o consumo de cafeína e álcool</li>
+                                <li>Considere conversar com um profissional de saúde mental</li>
+                            </ul>
+                        </div>
+                    `;
+                    resultClass = 'result-moderate';
+                } else {
+                    interpretation = `
+                        <h4 class="text-danger mb-3">Ansiedade Moderada a Severa</h4>
+                        <p>Seus sintomas indicam um nível moderado a severo de ansiedade. Recomendamos fortemente que você busque apoio profissional para ajudar a gerenciar esses sintomas.</p>
+                        
+                        <div class="recommendation">
+                            <h5>Recomendações:</h5>
+                            <ul>
+                                <li>Consulte um psicólogo ou psiquiatra para avaliação</li>
+                                <li>Pratique técnicas de gerenciamento de estresse diariamente</li>
+                                <li>Mantenha um diário de ansiedade para identificar gatilhos</li>
+                                <li>Busque apoio de amigos e familiares</li>
+                                <li>Considere participar de grupos de apoio</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Lembre-se:</strong> Este teste não substitui uma avaliação profissional. Se você está enfrentando dificuldades significativas, agende uma consulta com um profissional de saúde mental.
+                        </div>
+                    `;
+                    resultClass = 'result-severe';
+                }
+                
+                resultInterpretation.className = `result-container ${resultClass}`;
+                resultInterpretation.innerHTML = interpretation;
+                
+                // Salvar resultado no localStorage e sincronizar com Firestore
+                try {
+                    const testResult = {
+                        test: 'anxiety',
+                        testId: `anxiety_${new Date().toISOString()}_${Math.random().toString(36).substring(2, 10)}`,
+                        date: new Date().toISOString(),
+                        score: score,
+                        maxScore: questions.length * 3,
+                        level: score <= 4 ? 'minimal' : score <= 9 ? 'moderate' : 'severe'
+                    };
+                    
+                    let testHistory = JSON.parse(localStorage.getItem('testHistory') || '[]');
+                    testHistory.push(testResult);
+                    localStorage.setItem('testHistory', JSON.stringify(testHistory));
+                    
+                    // Sincronizar com Firestore se o usuário estiver logado
+                    if (window.firebaseAuth && window.firebaseAuth.currentUser && window.syncTestResults) {
+                        window.syncTestResults().then(success => {
+                            if (success) {
+                                console.log('Resultado do teste de ansiedade sincronizado com o Firestore.');
+                            }
+                        }).catch(error => {
+                            console.error('Erro ao sincronizar com Firestore:', error);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro ao salvar resultado:', error);
+                }
+            }
+            
+            // Reiniciar teste
+            restartBtn.addEventListener('click', function() {
+                answers = Array(questions.length).fill(null);
+                resultsContainer.style.display = 'none';
+                testIntro.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

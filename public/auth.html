@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticação - Kerem Kesia</title>
+    <!-- Link to the favicon -->
+    <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f8f9fa;
+        }
+        .auth-container {
+            max-width: 500px;
+            width: 100%;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .spinner {
+            width: 3rem;
+            height: 3rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div id="loading">
+            <div class="spinner-border text-primary spinner" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <h3>Processando autenticação...</h3>
+            <p class="text-muted">Por favor, aguarde enquanto processamos sua autenticação com o Calendly.</p>
+        </div>
+        
+        <div id="success" style="display: none;">
+            <div class="text-success mb-3">
+                <i class="fas fa-check-circle fa-4x"></i>
+            </div>
+            <h3>Autenticação concluída!</h3>
+            <p>Você foi autenticado com sucesso no Calendly.</p>
+            <button class="btn btn-primary mt-3" onclick="redirectToDashboard()">
+                <i class="fas fa-arrow-right me-2"></i>Ir para o Dashboard
+            </button>
+        </div>
+        
+        <div id="error" style="display: none;">
+            <div class="text-danger mb-3">
+                <i class="fas fa-exclamation-circle fa-4x"></i>
+            </div>
+            <h3>Erro na autenticação</h3>
+            <p id="errorMessage">Ocorreu um erro durante o processo de autenticação.</p>
+            <button class="btn btn-primary mt-3" onclick="retryAuth()">
+                <i class="fas fa-redo me-2"></i>Tentar Novamente
+            </button>
+            <button class="btn btn-outline-secondary mt-3 ms-2" onclick="redirectToDashboard()">
+                <i class="fas fa-arrow-right me-2"></i>Voltar ao Dashboard
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const CALENDLY_CLIENT_ID = "H60BLUs2RB3e_4Vb87qH1y8GAnkh13DhqHC20EWcj9g";
+        const REDIRECT_URI = "https://kerem-kesia.web.app/auth.html";
+        const TOKEN_ENDPOINT = "https://auth.calendly.com/oauth/token";
+        
+        // Base64URL encode function
+        function base64URLEncode(array) {
+            return btoa(String.fromCharCode.apply(null, array))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+        }
+        
+        // Function to get URL parameters
+        function getUrlParams() {
+            const params = {};
+            const queryString = window.location.search.substring(1);
+            const pairs = queryString.split('&');
+            
+            for (const pair of pairs) {
+                const [key, value] = pair.split('=');
+                if (key && value) {
+                    params[decodeURIComponent(key)] = decodeURIComponent(value);
+                }
+            }
+            
+            return params;
+        }
+        
+        // Function to exchange authorization code for access token
+        async function exchangeCodeForToken(code, codeVerifier) {
+            try {
+                // Use Firebase Cloud Functions as a proxy to handle CORS issues
+                // This assumes you have a Firebase Cloud Function set up for this purpose
+                const proxyUrl = 'https://us-central1-psicologakeremkesia.cloudfunctions.net/calendlyTokenExchange';
+                
+                const response = await fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        grant_type: 'authorization_code',
+                        client_id: CALENDLY_CLIENT_ID,
+                        code: code,
+                        redirect_uri: REDIRECT_URI,
+                        code_verifier: codeVerifier
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Token request failed: ${errorData.error_description || errorData.error || response.statusText}`);
+                }
+                
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error exchanging code for token:', error);
+                throw error;
+            }
+        }
+        
+        // Function to handle the authentication process
+        async function handleAuth() {
+            const params = getUrlParams();
+            const loadingElement = document.getElementById('loading');
+            const successElement = document.getElementById('success');
+            const errorElement = document.getElementById('error');
+            const errorMessageElement = document.getElementById('errorMessage');
+            
+            // Check if there's an error in the URL
+            if (params.error) {
+                loadingElement.style.display = 'none';
+                errorElement.style.display = 'block';
+                errorMessageElement.textContent = `Erro: ${params.error_description || params.error}`;
+                return;
+            }
+            
+            // Check if we have an authorization code
+            if (!params.code) {
+                loadingElement.style.display = 'none';
+                errorElement.style.display = 'block';
+                errorMessageElement.textContent = 'Código de autorização não encontrado na URL.';
+                return;
+            }
+            
+            // Verify state parameter to prevent CSRF attacks
+            const storedState = localStorage.getItem('calendlyAuthState');
+            if (params.state !== storedState) {
+                loadingElement.style.display = 'none';
+                errorElement.style.display = 'block';
+                errorMessageElement.textContent = 'Erro de validação de estado. Possível tentativa de CSRF.';
+                return;
+            }
+            
+            // Get the code verifier from localStorage
+            const codeVerifier = localStorage.getItem('code_verifier');
+            if (!codeVerifier) {
+                loadingElement.style.display = 'none';
+                errorElement.style.display = 'block';
+                errorMessageElement.textContent = 'Code verifier não encontrado. Por favor, tente novamente.';
+                return;
+            }
+            
+            try {
+                // Exchange the authorization code for an access token
+                const tokenData = await exchangeCodeForToken(params.code, codeVerifier);
+                
+                // Store the access token and expiry time
+                const expiryTime = new Date().getTime() + (tokenData.expires_in * 1000);
+                localStorage.setItem('calendlyAccessToken', tokenData.access_token);
+                localStorage.setItem('calendlyTokenExpiry', expiryTime.toString());
+                
+                // Clean up
+                localStorage.removeItem('calendlyAuthState');
+                localStorage.removeItem('code_verifier');
+                
+                // Show success message
+                loadingElement.style.display = 'none';
+                successElement.style.display = 'block';
+                
+                // Automatically redirect after 2 seconds
+                setTimeout(redirectToDashboard, 2000);
+            } catch (error) {
+                console.error('Authentication error:', error);
+                loadingElement.style.display = 'none';
+                errorElement.style.display = 'block';
+                errorMessageElement.textContent = `Erro ao processar autenticação: ${error.message}`;
+            }
+        }
+        
+        // Function to redirect to dashboard
+        function redirectToDashboard() {
+            window.location.href = 'dashboard.html';
+        }
+        
+        // Function to retry authentication
+        function retryAuth() {
+            // Clear any existing tokens
+            localStorage.removeItem('calendlyAccessToken');
+            localStorage.removeItem('calendlyTokenExpiry');
+            
+            // Generate a new state
+            const state = Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('calendlyAuthState', state);
+            
+            // Generate a new code verifier
+            const array = new Uint8Array(32);
+            window.crypto.getRandomValues(array);
+            const codeVerifier = base64URLEncode(array);
+            localStorage.setItem('code_verifier', codeVerifier);
+            
+            // Generate code challenge
+            const encoder = new TextEncoder();
+            const data = encoder.encode(codeVerifier);
+            window.crypto.subtle.digest('SHA-256', data)
+                .then(hash => {
+                    const codeChallenge = base64URLEncode(new Uint8Array(hash));
+                    
+                    // Build the authorization URL
+                    const authUrl = new URL('https://auth.calendly.com/oauth/authorize');
+                    authUrl.searchParams.append('client_id', CALENDLY_CLIENT_ID);
+                    authUrl.searchParams.append('response_type', 'code');
+                    authUrl.searchParams.append('redirect_uri', REDIRECT_URI);
+                    authUrl.searchParams.append('state', state);
+                    authUrl.searchParams.append('code_challenge', codeChallenge);
+                    authUrl.searchParams.append('code_challenge_method', 'S256');
+                    
+                    // Redirect to the authorization URL
+                    window.location.href = authUrl.toString();
+                });
+        }
+        
+        // Start the authentication process when the page loads
+        window.onload = handleAuth;
+    </script>
+</body>
+</html>

@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Estresse - Kerem Kesia</title>
+    <!-- Link to the favicon -->
+    <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Passions+Conflict&display=swap" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        .question-container {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .option-item {
+            padding: 0.75rem;
+            border-radius: 5px;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .option-item:hover {
+            background-color: #e9ecef;
+        }
+        
+        .option-item.selected {
+            background-color: #cfe2ff;
+            border-color: #9ec5fe;
+        }
+        
+        .progress {
+            height: 10px;
+            margin-bottom: 2rem;
+        }
+        
+        .result-container {
+            padding: 2rem;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            margin-top: 2rem;
+        }
+        
+        .result-low {
+            background-color: #d1e7dd;
+            border-color: #badbcc;
+        }
+        
+        .result-moderate {
+            background-color: #fff3cd;
+            border-color: #ffecb5;
+        }
+        
+        .result-high {
+            background-color: #f8d7da;
+            border-color: #f5c2c7;
+        }
+        
+        .recommendation {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 5px;
+            background-color: white;
+        }
+        
+        .stress-meter {
+            width: 100%;
+            height: 30px;
+            background: linear-gradient(to right, #198754, #ffc107, #dc3545);
+            border-radius: 15px;
+            position: relative;
+            margin: 2rem 0;
+        }
+        
+        .stress-indicator {
+            position: absolute;
+            top: -20px;
+            width: 20px;
+            height: 40px;
+            background-color: #212529;
+            border-radius: 3px;
+            transform: translateX(-50%);
+            transition: left 0.5s ease;
+        }
+        
+        .stress-indicator::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 10px solid #212529;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="index.html">
+                <video autoplay muted loop playsinline height="40" class="me-2" style="border-radius: 4px;">
+                    <source src="assets/psy-animated-logo-2.mp4" type="video/mp4">
+                    Seu navegador não suporta vídeos.
+                </video>
+                <span>Psicóloga Kerem Kesia</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Início</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.html">Dashboard</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5 pt-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="mb-0"><i class="fas fa-wind me-2"></i>Teste de Estresse</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="test-intro">
+                            <p class="lead">Este teste foi desenvolvido para ajudar a identificar seus níveis de estresse e como ele pode estar afetando sua vida. Não é um diagnóstico clínico, mas pode fornecer insights valiosos sobre seu bem-estar.</p>
+                            
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Instruções:</strong> Responda às perguntas considerando como você se sentiu no último mês. Seja honesto(a) para obter resultados mais precisos.
+                            </div>
+                            
+                            <button id="start-test" class="btn btn-primary btn-lg mt-3">
+                                <i class="fas fa-play-circle me-2"></i>Iniciar Teste
+                            </button>
+                        </div>
+                        
+                        <div id="test-container" style="display: none;">
+                            <div class="progress">
+                                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            
+                            <div id="question-container"></div>
+                            
+                            <div class="d-flex justify-content-between mt-4">
+                                <button id="prev-btn" class="btn btn-secondary" disabled>
+                                    <i class="fas fa-arrow-left me-2"></i>Anterior
+                                </button>
+                                <button id="next-btn" class="btn btn-primary">
+                                    Próxima<i class="fas fa-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="results-container" style="display: none;">
+                            <h3 class="text-center mb-4">Resultado do Teste de Estresse</h3>
+                            
+                            <div id="score-display" class="text-center mb-4">
+                                <div class="display-4 mb-2" id="score-value">0</div>
+                                <div id="score-label" class="lead">Pontuação</div>
+                            </div>
+                            
+                            <div class="stress-meter">
+                                <div id="stress-indicator" class="stress-indicator"></div>
+                            </div>
+                            
+                            <div id="result-interpretation" class="result-container">
+                                <!-- Será preenchido via JavaScript -->
+                            </div>
+                            
+                            <div class="text-center mt-4">
+                                <button id="restart-btn" class="btn btn-outline-primary me-2">
+                                    <i class="fas fa-redo me-2"></i>Refazer Teste
+                                </button>
+                                <a href="dashboard.html" class="btn btn-primary">
+                                    <i class="fas fa-home me-2"></i>Voltar ao Dashboard
+                                </a>
+                                <button id="share-btn" class="btn btn-outline-success ms-2" onclick="shareResults()">
+                                    <i class="fas fa-share-alt me-2"></i>Compartilhar
+                                </button>
+                            </div>
+                            
+                            <script>
+                                function shareResults() {
+                                    const score = document.getElementById('score-value').textContent;
+                                    const maxScore = 40; // 10 perguntas com máximo de 4 pontos cada
+                                    const level = score <= 13 ? 'baixo' : score <= 26 ? 'moderado' : 'alto';
+                                    
+                                    const text = `Acabei de fazer o Teste de Estresse e meu resultado foi: Nível ${level} (${score}/${maxScore} pontos). Faça o seu teste também!`;
+                                    
+                                    if (navigator.share) {
+                                        navigator.share({
+                                            title: 'Meu Resultado - Teste de Estresse',
+                                            text: text,
+                                            url: window.location.href
+                                        })
+                                        .catch(error => console.error('Erro ao compartilhar:', error));
+                                    } else {
+                                        // Fallback para navegadores que não suportam a API Web Share
+                                        const textarea = document.createElement('textarea');
+                                        textarea.value = text;
+                                        document.body.appendChild(textarea);
+                                        textarea.select();
+                                        document.execCommand('copy');
+                                        document.body.removeChild(textarea);
+                                        alert('Resultado copiado para a área de transferência!');
+                                    }
+                                }
+                            </script>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white mt-5 py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Kerem Kesia</h5>
+                    <p>Psicóloga Clínica - CRP:09/15349</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>© 2025 Todos os direitos reservados</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-init.js"></script>
+    
+    <!-- Test Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Perguntas do teste de estresse
+            const questions = [
+                {
+                    question: "Com que frequência você tem se sentido nervoso(a) ou estressado(a)?",
+                    options: [
+                        "Nunca",
+                        "Quase nunca",
+                        "Às vezes",
+                        "Com bastante frequência",
+                        "Muito frequentemente"
+                    ]
+                },
+                {
+                    question: "Com que frequência você tem se sentido incapaz de controlar as coisas importantes em sua vida?",
+                    options: [
+                        "Nunca",
+                        "Quase nunca",
+                        "Às vezes",
+                        "Com bastante frequência",
+                        "Muito frequentemente"
+                    ]
+                },
+                {
+                    question: "Com que frequência você tem se sentido confiante na sua capacidade de lidar com seus problemas pessoais?",
+                    options: [
+                        "Muito frequentemente",
+                        "Com bastante frequência",
+                        "Às vezes",
+                        "Quase nunca",
+                        "Nunca"
+                    ],
+                    reversed: true
+                },
+                {
+                    question: "Com que frequência você tem sentido que as coisas estão acontecendo de acordo com a sua vontade?",
+                    options: [
+                        "Muito frequentemente",
+                        "Com bastante frequência",
+                        "Às vezes",
+                        "Quase nunca",
+                        "Nunca"
+                    ],
+                    reversed: true
+                },
+                {
+                    question: "Com que frequência você tem achado que não conseguiria lidar com todas as coisas que você tem que fazer?",
+                    options: [
+                        "Nunca",
+                        "Quase nunca",
+                        "Às vezes",
+                        "Com bastante frequência",
+                        "Muito frequentemente"
+                    ]
+                },
+                {
+                    question: "Com que frequência você tem conseguido controlar as irritações em sua vida?",
+                    options: [
+                        "Muito frequentemente",
+                        "Com bastante frequência",
+                        "Às vezes",
+                        "Quase nunca",
+                        "Nunca"
+                    ],
+                    reversed: true
+                },
+                {
+                    question: "Com que frequência você tem sentido que está por cima das coisas?",
+                    options: [
+                        "Muito frequentemente",
+                        "Com bastante frequência",
+                        "Às vezes",
+                        "Quase nunca",
+                        "Nunca"
+                    ],
+                    reversed: true
+                },
+                {
+                    question: "Com que frequência você tem ficado irritado(a) porque as coisas que acontecem estão fora do seu controle?",
+                    options: [
+                        "Nunca",
+                        "Quase nunca",
+                        "Às vezes",
+                        "Com bastante frequência",
+                        "Muito frequentemente"
+                    ]
+                },
+                {
+                    question: "Com que frequência você tem se encontrado pensando sobre as coisas que deve fazer?",
+                    options: [
+                        "Nunca",
+                        "Quase nunca",
+                        "Às vezes",
+                        "Com bastante frequência",
+                        "Muito frequentemente"
+                    ]
+                },
+                {
+                    question: "Com que frequência você tem sentido que as dificuldades se acumulam a ponto de você acreditar que não pode superá-las?",
+                    options: [
+                        "Nunca",
+                        "Quase nunca",
+                        "Às vezes",
+                        "Com bastante frequência",
+                        "Muito frequentemente"
+                    ]
+                }
+            ];
+            
+            // Elementos do DOM
+            const startBtn = document.getElementById('start-test');
+            const testIntro = document.getElementById('test-intro');
+            const testContainer = document.getElementById('test-container');
+            const questionContainer = document.getElementById('question-container');
+            const progressBar = document.getElementById('progress-bar');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const resultsContainer = document.getElementById('results-container');
+            const scoreValue = document.getElementById('score-value');
+            const stressIndicator = document.getElementById('stress-indicator');
+            const resultInterpretation = document.getElementById('result-interpretation');
+            const restartBtn = document.getElementById('restart-btn');
+            
+            // Variáveis de estado
+            let currentQuestion = 0;
+            let answers = Array(questions.length).fill(null);
+            
+            // Iniciar o teste
+            startBtn.addEventListener('click', function() {
+                testIntro.style.display = 'none';
+                testContainer.style.display = 'block';
+                showQuestion(0);
+            });
+            
+            // Mostrar pergunta atual
+            function showQuestion(index) {
+                currentQuestion = index;
+                
+                // Atualizar progresso
+                const progress = ((index + 1) / questions.length) * 100;
+                progressBar.style.width = `${progress}%`;
+                progressBar.setAttribute('aria-valuenow', progress);
+                
+                // Atualizar botões de navegação
+                prevBtn.disabled = index === 0;
+                nextBtn.textContent = index === questions.length - 1 ? 'Ver Resultados' : 'Próxima';
+                nextBtn.innerHTML = index === questions.length - 1 ? 'Ver Resultados<i class="fas fa-chart-bar ms-2"></i>' : 'Próxima<i class="fas fa-arrow-right ms-2"></i>';
+                
+                // Criar elemento da pergunta
+                const questionData = questions[index];
+                const questionElement = document.createElement('div');
+                questionElement.className = 'question-container';
+                
+                const questionTitle = document.createElement('h4');
+                questionTitle.textContent = `${index + 1}. ${questionData.question}`;
+                questionElement.appendChild(questionTitle);
+                
+                const optionsContainer = document.createElement('div');
+                optionsContainer.className = 'options-container';
+                
+                questionData.options.forEach((option, optionIndex) => {
+                    const optionItem = document.createElement('div');
+                    optionItem.className = 'option-item';
+                    if (answers[index] === optionIndex) {
+                        optionItem.classList.add('selected');
+                    }
+                    
+                    optionItem.textContent = option;
+                    optionItem.addEventListener('click', function() {
+                        // Remover seleção anterior
+                        const selectedOptions = optionsContainer.querySelectorAll('.selected');
+                        selectedOptions.forEach(item => item.classList.remove('selected'));
+                        
+                        // Selecionar nova opção
+                        optionItem.classList.add('selected');
+                        answers[index] = optionIndex;
+                        
+                        // Habilitar botão próximo se for a última pergunta
+                        if (index === questions.length - 1) {
+                            nextBtn.disabled = false;
+                        }
+                    });
+                    
+                    optionsContainer.appendChild(optionItem);
+                });
+                
+                questionElement.appendChild(optionsContainer);
+                
+                // Limpar e adicionar nova pergunta
+                questionContainer.innerHTML = '';
+                questionContainer.appendChild(questionElement);
+                
+                // Verificar se o botão próximo deve estar desabilitado
+                nextBtn.disabled = index === questions.length - 1 && answers[index] === null;
+            }
+            
+            // Botão anterior
+            prevBtn.addEventListener('click', function() {
+                if (currentQuestion > 0) {
+                    showQuestion(currentQuestion - 1);
+                }
+            });
+            
+            // Botão próximo
+            nextBtn.addEventListener('click', function() {
+                if (currentQuestion < questions.length - 1) {
+                    // Se a pergunta atual não foi respondida, não avançar
+                    if (answers[currentQuestion] === null) {
+                        alert('Por favor, selecione uma resposta antes de continuar.');
+                        return;
+                    }
+                    
+                    showQuestion(currentQuestion + 1);
+                } else {
+                    // Verificar se todas as perguntas foram respondidas
+                    const allAnswered = answers.every(answer => answer !== null);
+                    
+                    if (!allAnswered) {
+                        alert('Por favor, responda todas as perguntas antes de ver os resultados.');
+                        
+                        // Encontrar a primeira pergunta não respondida
+                        const firstUnanswered = answers.findIndex(answer => answer === null);
+                        if (firstUnanswered !== -1) {
+                            showQuestion(firstUnanswered);
+                        }
+                        
+                        return;
+                    }
+                    
+                    showResults();
+                }
+            });
+            
+            // Mostrar resultados
+            function showResults() {
+                testContainer.style.display = 'none';
+                resultsContainer.style.display = 'block';
+                
+                // Calcular pontuação (0-4 para cada resposta, considerando perguntas invertidas)
+                let score = 0;
+                for (let i = 0; i < questions.length; i++) {
+                    const value = answers[i];
+                    score += questions[i].reversed ? value : 4 - value;
+                }
+                
+                // Exibir pontuação
+                scoreValue.textContent = score;
+                
+                // Posicionar o indicador de estresse
+                const maxScore = questions.length * 4;
+                const percentage = (score / maxScore) * 100;
+                stressIndicator.style.left = `${percentage}%`;
+                
+                // Interpretar resultado
+                let interpretation = '';
+                let resultClass = '';
+                
+                if (score <= 13) {
+                    interpretation = `
+                        <h4 class="text-success mb-3">Nível de Estresse Baixo</h4>
+                        <p>Seus níveis de estresse estão dentro de uma faixa saudável. Você parece estar lidando bem com os desafios do dia a dia.</p>
+                        
+                        <div class="recommendation">
+                            <h5>Recomendações para manter o bem-estar:</h5>
+                            <ul>
+                                <li>Continue praticando atividades que você gosta</li>
+                                <li>Mantenha uma rotina de exercícios físicos</li>
+                                <li>Cultive relacionamentos positivos</li>
+                                <li>Reserve tempo para relaxamento e lazer</li>
+                            </ul>
+                        </div>
+                    `;
+                    resultClass = 'result-low';
+                } else if (score <= 26) {
+                    interpretation = `
+                        <h4 class="text-warning mb-3">Nível de Estresse Moderado</h4>
+                        <p>Você está experimentando níveis moderados de estresse. Isso é comum, mas é importante desenvolver estratégias para gerenciá-lo antes que se torne problemático.</p>
+                        
+                        <div class="recommendation">
+                            <h5>Recomendações para reduzir o estresse:</h5>
+                            <ul>
+                                <li>Pratique técnicas de respiração e relaxamento diariamente</li>
+                                <li>Identifique as principais fontes de estresse em sua vida</li>
+                                <li>Estabeleça limites saudáveis no trabalho e relacionamentos</li>
+                                <li>Considere a prática de mindfulness ou meditação</li>
+                                <li>Organize seu tempo e priorize tarefas</li>
+                                <li>Busque atividades que promovam bem-estar</li>
+                            </ul>
+                        </div>
+                    `;
+                    resultClass = 'result-moderate';
+                } else {
+                    interpretation = `
+                        <h4 class="text-danger mb-3">Nível de Estresse Alto</h4>
+                        <p>Seus resultados indicam níveis elevados de estresse. O estresse crônico pode ter impactos significativos na saúde física e mental, por isso é importante buscar formas de reduzi-lo.</p>
+                        
+                        <div class="recommendation">
+                            <h5>Recomendações importantes:</h5>
+                            <ul>
+                                <li>Considere buscar apoio profissional de um psicólogo</li>
+                                <li>Pratique técnicas de gerenciamento de estresse diariamente</li>
+                                <li>Reavalie suas responsabilidades e considere delegar quando possível</li>
+                                <li>Priorize o autocuidado e o descanso adequado</li>
+                                <li>Estabeleça uma rotina de exercícios físicos regulares</li>
+                                <li>Limite a exposição a situações estressantes quando possível</li>
+                                <li>Busque apoio social de amigos e familiares</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Lembre-se:</strong> Este teste não substitui uma avaliação profissional. Se você está enfrentando níveis elevados de estresse, considere agendar uma consulta com um profissional de saúde mental.
+                        </div>
+                    `;
+                    resultClass = 'result-high';
+                }
+                
+                resultInterpretation.className = `result-container ${resultClass}`;
+                resultInterpretation.innerHTML = interpretation;
+                
+                // Salvar resultado no localStorage e sincronizar com Firestore
+                try {
+                    const testResult = {
+                        test: 'stress',
+                        testId: `stress_${new Date().toISOString()}_${Math.random().toString(36).substring(2, 10)}`,
+                        date: new Date().toISOString(),
+                        score: score,
+                        maxScore: maxScore,
+                        level: score <= 13 ? 'low' : score <= 26 ? 'moderate' : 'high'
+                    };
+                    
+                    let testHistory = JSON.parse(localStorage.getItem('testHistory') || '[]');
+                    testHistory.push(testResult);
+                    localStorage.setItem('testHistory', JSON.stringify(testHistory));
+                    
+                    // Sincronizar com Firestore se o usuário estiver logado
+                    if (window.firebaseAuth && window.firebaseAuth.currentUser && window.syncTestResults) {
+                        window.syncTestResults().then(success => {
+                            if (success) {
+                                console.log('Resultado do teste de estresse sincronizado com o Firestore.');
+                            }
+                        }).catch(error => {
+                            console.error('Erro ao sincronizar com Firestore:', error);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro ao salvar resultado:', error);
+                }
+            }
+            
+            // Reiniciar teste
+            restartBtn.addEventListener('click', function() {
+                answers = Array(questions.length).fill(null);
+                resultsContainer.style.display = 'none';
+                testIntro.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,671 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Área do Paciente - Login e Registro</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCi8pNc-zt4gSWlrA-0NCIgV0F14nnxClk",
+  authDomain: "kerem-kesia.firebaseapp.com",
+  projectId: "kerem-kesia",
+  storageBucket: "kerem-kesia.firebasestorage.app",
+  messagingSenderId: "277928810829",
+  appId: "1:277928810829:web:917f5d4658e3b8ce363f04",
+  measurementId: "G-5MK89B0LNT"
+};
+
+
+
+
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    // Função para mostrar mensagem de sucesso
+    window.showSuccessMessage = function(message) {
+      const alertElement = document.getElementById('authAlert');
+      alertElement.className = 'alert alert-success alert-dismissible fade show';
+      alertElement.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      alertElement.style.display = 'block';
+      
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        const bsAlert = new bootstrap.Alert(alertElement);
+        bsAlert.close();
+      }, 5000);
+    };
+
+    // Função para mostrar mensagem de erro
+    window.showErrorMessage = function(errorCode, message) {
+      const alertElement = document.getElementById('authAlert');
+      alertElement.className = 'alert alert-warning alert-dismissible fade show';
+      alertElement.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      alertElement.style.display = 'block';
+    };
+
+    // Função para traduzir códigos de erro do Firebase
+    window.getErrorMessage = function(errorCode) {
+      const errorMessages = {
+        'auth/user-not-found': 'E-mail não encontrado. Verifique o endereço informado.',
+        'auth/wrong-password': 'Senha incorreta. Tente novamente.',
+        'auth/invalid-email': 'E-mail inválido. Verifique o formato do endereço.',
+        'auth/weak-password': 'Senha muito fraca. Use pelo menos 6 caracteres.',
+        'auth/email-already-in-use': 'Este e-mail já está cadastrado. Redirecionando para o login...',
+        'auth/user-disabled': 'Sua conta foi suspensa. Contate o suporte.',
+        'auth/too-many-requests': 'Muitas tentativas de login. Tente novamente mais tarde.',
+        'auth/network-request-failed': 'Erro de conexão. Verifique sua internet e tente novamente.',
+        'auth/operation-not-allowed': 'Operação não permitida. Contate o suporte.',
+        'auth/popup-closed-by-user': 'Login cancelado. A janela foi fechada antes da conclusão.',
+        'auth/unauthorized-domain': 'Domínio não autorizado para autenticação.',
+        'auth/requires-recent-login': 'Sua sessão expirou. Faça login novamente.',
+        'auth/account-exists-with-different-credential': 'Este e-mail já está associado a outra conta. Tente outro método de login.'
+      };
+      
+      return errorMessages[errorCode] || 'Erro no servidor. Tente novamente mais tarde.';
+    };
+
+    // Função para mostrar indicador de carregamento
+    window.setLoading = function(isLoading, buttonId) {
+      const button = document.getElementById(buttonId);
+      if (!button) return;
+      
+      if (isLoading) {
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processando...';
+      } else {
+        button.disabled = false;
+        
+        // Restaurar o texto original do botão com base no ID
+        if (buttonId === 'loginButton') {
+          button.innerHTML = 'Entrar';
+        } else if (buttonId === 'registerButton') {
+          button.innerHTML = 'Registrar';
+        } else if (buttonId === 'googleLoginButton') {
+          button.innerHTML = '<i class="fab fa-google text-white" style="font-size: 18px;"></i><span>Entrar com Google</span>';
+        } else if (buttonId === 'googleRegisterButton') {
+          button.innerHTML = '<i class="fab fa-google text-white" style="font-size: 18px;"></i><span>Registrar com Google</span>';
+        }
+      }
+    };
+
+    window.login = async function() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      
+      // Validação básica
+      if (!email || !password) {
+        showErrorMessage('validation', 'Preencha todos os campos para continuar.');
+        return;
+      }
+      
+      setLoading(true, 'loginButton');
+      
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        showSuccessMessage('Login realizado com sucesso.');
+        
+        // Redirecionar após um breve delay para mostrar a mensagem de sucesso
+        setTimeout(() => {
+          window.location.href = "dashboard.html";
+        }, 1500);
+      } catch (error) {
+        console.error("Erro no login:", error);
+        const errorMessage = getErrorMessage(error.code);
+        showErrorMessage(error.code, errorMessage);
+      } finally {
+        setLoading(false, 'loginButton');
+      }
+    };
+
+    window.register = async function() {
+      const firstName = document.getElementById('registerFirstName').value.trim();
+      const lastName = document.getElementById('registerLastName').value.trim();
+      const email = document.getElementById('registerEmail').value.trim();
+      const phone = document.getElementById('registerPhone').value.trim();
+      const password = document.getElementById('registerPassword').value;
+      
+      // Validação básica
+      if (!firstName || !lastName || !email || !password) {
+        showErrorMessage('validation', 'Preencha todos os campos obrigatórios para continuar.');
+        return;
+      }
+      
+      // Validação de senha
+      if (password.length < 6) {
+        showErrorMessage('validation', 'A senha deve ter pelo menos 6 caracteres.');
+        return;
+      }
+      
+      setLoading(true, 'registerButton');
+      
+      try {
+        // Criar usuário com email e senha
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Armazenar dados adicionais do usuário no localStorage para uso na dashboard
+        const userData = {
+          firstName: firstName,
+          lastName: lastName,
+          fullName: `${firstName} ${lastName}`,
+          email: email,
+          phone: phone || '',
+          createdAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem('userData', JSON.stringify(userData));
+        
+        // Atualizar o perfil do usuário com o nome completo
+        try {
+          await user.updateProfile({
+            displayName: `${firstName} ${lastName}`
+          });
+          console.log("Perfil do usuário atualizado com sucesso");
+        } catch (profileError) {
+          console.error("Erro ao atualizar perfil:", profileError);
+          // Continuar mesmo se falhar a atualização do perfil
+        }
+        
+        showSuccessMessage('Cadastro realizado com sucesso!');
+        
+        // Redirecionar após um breve delay para mostrar a mensagem de sucesso
+        setTimeout(() => {
+          window.location.href = "dashboard.html";
+        }, 1500);
+      } catch (error) {
+        console.error("Erro no cadastro:", error);
+        const errorMessage = getErrorMessage(error.code);
+        showErrorMessage(error.code, errorMessage);
+        
+        // Se o erro for de email já existente, transferir dados para o login
+        if (error.code === 'auth/email-already-in-use') {
+          // Pequeno delay para garantir que a UI seja atualizada
+          setTimeout(() => transferFormData(), 100);
+        }
+      } finally {
+        setLoading(false, 'registerButton');
+      }
+    };
+
+    window.loginWithGoogle = async function(isRegister = false) {
+      const buttonId = isRegister ? 'googleRegisterButton' : 'googleLoginButton';
+      setLoading(true, buttonId);
+      
+      try {
+        await signInWithPopup(auth, provider);
+        const successMessage = isRegister 
+          ? 'Cadastro com Google realizado com sucesso!' 
+          : 'Login com Google realizado com sucesso!';
+        
+        showSuccessMessage(successMessage);
+        
+        // Redirecionar após um breve delay para mostrar a mensagem de sucesso
+        setTimeout(() => {
+          window.location.href = "dashboard.html";
+        }, 1500);
+      } catch (error) {
+        console.error("Erro ao entrar com Google:", error);
+        const errorMessage = getErrorMessage(error.code) || 'Erro ao entrar com Google. Tente novamente.';
+        showErrorMessage(error.code, errorMessage);
+      } finally {
+        setLoading(false, buttonId);
+      }
+    };
+    
+    // Função para transferir dados do formulário de registro para o de login
+    window.transferFormData = function() {
+      // Transferir email do formulário de registro para o de login
+      const registerEmail = document.getElementById('registerEmail').value;
+      if (registerEmail) {
+        document.getElementById('loginEmail').value = registerEmail;
+      }
+      
+      // Salvar os outros dados do formulário no localStorage para não perdê-los
+      const firstName = document.getElementById('registerFirstName').value.trim();
+      const lastName = document.getElementById('registerLastName').value.trim();
+      const phone = document.getElementById('registerPhone').value.trim();
+      
+      if (firstName || lastName || phone) {
+        const tempUserData = {
+          firstName: firstName,
+          lastName: lastName,
+          phone: phone,
+          email: registerEmail
+        };
+        localStorage.setItem('tempUserData', JSON.stringify(tempUserData));
+      }
+      
+      // Mudar para a aba de login
+      const loginTab = document.getElementById('login-tab');
+      const tab = new bootstrap.Tab(loginTab);
+      tab.show();
+      
+      // Focar no campo de senha após um breve delay
+      setTimeout(() => {
+        const passwordField = document.getElementById('loginPassword');
+        passwordField.focus();
+        
+        // Adicionar uma classe de destaque ao campo de senha
+        passwordField.classList.add('border-primary');
+        setTimeout(() => passwordField.classList.remove('border-primary'), 2000);
+      }, 300);
+    };
+    
+    // Configurar event listeners para as abas
+    document.addEventListener('DOMContentLoaded', function() {
+      // Event listener para a aba de login
+      document.getElementById('login-tab').addEventListener('click', function() {
+        // Transferir dados do formulário de registro para o de login
+        const registerEmail = document.getElementById('registerEmail').value;
+        if (registerEmail) {
+          document.getElementById('loginEmail').value = registerEmail;
+          
+          // Focar no campo de senha após um breve delay
+          setTimeout(() => {
+            const passwordField = document.getElementById('loginPassword');
+            passwordField.focus();
+          }, 100);
+        }
+      });
+      
+      // Event listener para a aba de registro
+      document.getElementById('register-tab').addEventListener('click', function() {
+        // Verificar se há email no formulário de login para transferir para o registro
+        const loginEmail = document.getElementById('loginEmail').value;
+        if (loginEmail) {
+          document.getElementById('registerEmail').value = loginEmail;
+          
+          // Focar no campo de senha
+          setTimeout(() => {
+            document.getElementById('registerPassword').focus();
+          }, 100);
+        }
+      });
+      
+      // Adicionar event listeners para a tecla Enter nos campos de login
+      const loginFields = [
+        document.getElementById('loginEmail'),
+        document.getElementById('loginPassword')
+      ];
+      
+      loginFields.forEach(field => {
+        field.addEventListener('keypress', function(event) {
+          // Verificar se a tecla pressionada é Enter
+          if (event.key === 'Enter') {
+            event.preventDefault(); // Prevenir o comportamento padrão do Enter
+            document.getElementById('loginButton').click(); // Acionar o botão de login
+          }
+        });
+      });
+      
+      // Adicionar event listeners para a tecla Enter nos campos de registro
+      const registerFields = [
+        document.getElementById('registerFirstName'),
+        document.getElementById('registerLastName'),
+        document.getElementById('registerEmail'),
+        document.getElementById('registerPhone'),
+        document.getElementById('registerPassword')
+      ];
+      
+      registerFields.forEach(field => {
+        field.addEventListener('keypress', function(event) {
+          // Verificar se a tecla pressionada é Enter
+          if (event.key === 'Enter') {
+            event.preventDefault(); // Prevenir o comportamento padrão do Enter
+            document.getElementById('registerButton').click(); // Acionar o botão de registro
+          }
+        });
+      });
+    });
+  </script>
+  <style>
+    body {
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f8f9fa;
+    }
+    .card {
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    /* Estilos para o botão do Google */
+    .btn-danger {
+      transition: all 0.3s ease;
+    }
+    .btn-danger:hover {
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid #ddd;
+    }
+    .divider span {
+      padding: 0 10px;
+      color: #757575;
+      font-size: 0.9rem;
+    }
+    .alert {
+      margin-bottom: 20px;
+      text-align: left;
+      display: none;
+    }
+    .alert-success {
+      background-color: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+    }
+    .alert-warning {
+      background-color: #fff3cd;
+      border-color: #ffeeba;
+      color: #856404;
+    }
+    .border-primary {
+      border-color: #0d6efd !important;
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    /* Estilos para a catchphrase */
+    .catchphrase-container {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+    }
+    
+    .catchphrase {
+      font-style: italic;
+      font-weight: 500;
+      color: #6c63ff;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .catchphrase-highlight {
+      color: #6c63ff;
+      font-weight: bold;
+      display: inline-block;
+      position: relative;
+    }
+    
+    /* Animações para os elementos geométricos */
+    @keyframes rotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.7; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.7; }
+    }
+    
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+    
+    @keyframes fadeInOut {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+    
+    @keyframes colorChange {
+      0% { background-color: rgba(255, 255, 255, 0.8); }
+      50% { background-color: rgba(204, 212, 255, 0.8); }
+      100% { background-color: rgba(255, 255, 255, 0.8); }
+    }
+    
+    /* Elementos geométricos */
+    .geometric-element {
+      position: absolute;
+      z-index: 1;
+      background-color: rgba(255, 255, 255, 0.8);
+      box-shadow: 0 0 15px rgba(108, 99, 255, 0.2);
+    }
+    
+    .circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      top: -10px;
+      left: 10%;
+      animation: float 6s ease-in-out infinite, colorChange 8s infinite;
+    }
+    
+    .square {
+      width: 25px;
+      height: 25px;
+      right: 15%;
+      bottom: 10px;
+      animation: rotate 10s linear infinite, fadeInOut 5s infinite;
+    }
+    
+    .triangle {
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 35px solid rgba(255, 255, 255, 0.8);
+      background-color: transparent !important;
+      right: 30px;
+      top: 20px;
+      animation: pulse 4s ease-in-out infinite;
+    }
+    
+    .brain-icon {
+      position: absolute;
+      font-size: 24px;
+      color: rgba(108, 99, 255, 0.2);
+      right: 10px;
+      bottom: 10px;
+      animation: pulse 3s ease-in-out infinite;
+      z-index: 1;
+    }
+    
+    .heart-icon {
+      position: absolute;
+      font-size: 20px;
+      color: rgba(108, 99, 255, 0.2);
+      left: 15px;
+      bottom: 15px;
+      animation: pulse 4s ease-in-out infinite;
+      z-index: 1;
+    }
+    
+    .balance-icon {
+      position: absolute;
+      font-size: 18px;
+      color: rgba(108, 99, 255, 0.2);
+      left: 45px;
+      top: 15px;
+      animation: float 5s ease-in-out infinite;
+      z-index: 1;
+    }
+    
+    .helping-icon {
+      position: absolute;
+      font-size: 18px;
+      color: rgba(108, 99, 255, 0.2);
+      right: 45px;
+      top: 40px;
+      animation: pulse 4.5s ease-in-out infinite;
+      z-index: 1;
+    }
+    
+    .diamond {
+      width: 30px;
+      height: 30px;
+      transform: rotate(45deg);
+      left: 40%;
+      bottom: 15px;
+      animation: float 7s ease-in-out infinite, colorChange 10s infinite;
+    }
+    
+    /* Animação para o texto */
+    .animated-text {
+      display: inline-block;
+      animation: fadeInOut 3s infinite;
+    }
+    
+    .animated-text-delay-1 {
+      animation-delay: 0.5s;
+    }
+    
+    .animated-text-delay-2 {
+      animation-delay: 1s;
+    }
+    
+    /* Estilos para os benefícios */
+    .benefits {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+    
+    .benefit-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      animation: fadeInOut 4s infinite;
+    }
+    
+    .benefit-item:nth-child(1) {
+      animation-delay: 0s;
+    }
+    
+    .benefit-item:nth-child(2) {
+      animation-delay: 1s;
+    }
+    
+    .benefit-item:nth-child(3) {
+      animation-delay: 2s;
+    }
+    
+    @keyframes flipIn {
+      0% { transform: perspective(400px) rotateY(90deg); opacity: 0; }
+      100% { transform: perspective(400px) rotateY(0deg); opacity: 1; }
+    }
+    
+    .catchphrase-container {
+      animation: flipIn 1s ease-out;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h3 class="mb-4 text-center">Área do Paciente</h3>
+  
+  <!-- Catchphrase animada -->
+  <div class="catchphrase-container">
+    <div class="geometric-element circle"></div>
+    <div class="geometric-element square"></div>
+    <div class="geometric-element triangle"></div>
+    <div class="geometric-element diamond"></div>
+    <i class="fas fa-brain brain-icon"></i>
+    <i class="fas fa-heart heart-icon"></i>
+    <i class="fas fa-balance-scale balance-icon"></i>
+    <i class="fas fa-hands-helping helping-icon"></i>
+    
+    <p class="catchphrase">
+      <span class="animated-text">Transforme</span> 
+      <span class="animated-text animated-text-delay-1">sua jornada</span> 
+      <span class="animated-text animated-text-delay-2">de autoconhecimento</span><br>
+      <span class="catchphrase-highlight">Acompanhe seu progresso, registre suas emoções e evolua!</span>
+    </p>
+    <div class="benefits">
+      <span class="benefit-item"><i class="fas fa-chart-line"></i> Gráficos de humor</span>
+      <span class="benefit-item"><i class="fas fa-calendar-check"></i> Agendamentos</span>
+      <span class="benefit-item"><i class="fas fa-clipboard-list"></i> Testes psicológicos</span>
+    </div>
+  </div>
+  
+  <!-- Área de notificação -->
+  <div id="authAlert" class="alert alert-dismissible fade show" role="alert" style="display: none;"></div>
+  
+  <ul class="nav nav-tabs mb-3" id="formTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">Login</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab">Cadastro</button>
+    </li>
+  </ul>
+  <div class="tab-content">
+    <div class="tab-pane fade show active" id="login" role="tabpanel">
+      <form id="loginForm" onsubmit="login(); return false;">
+        <input type="email" id="loginEmail" class="form-control mb-3" placeholder="Email">
+        <input type="password" id="loginPassword" class="form-control mb-3" placeholder="Senha">
+        <button type="submit" id="loginButton" class="btn btn-primary w-100 mb-2">Entrar</button>
+      </form>
+      <div class="divider">
+        <span>ou</span>
+      </div>
+      <button id="googleLoginButton" onclick="loginWithGoogle(false)" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+        <i class="fab fa-google text-white" style="font-size: 18px;"></i>
+        <span>Entrar com Google</span>
+      </button>
+    </div>
+    <div class="tab-pane fade" id="register" role="tabpanel">
+      <form id="registerForm" onsubmit="register(); return false;">
+        <div class="row mb-3">
+          <div class="col-6">
+            <input type="text" id="registerFirstName" class="form-control" placeholder="Nome">
+          </div>
+          <div class="col-6">
+            <input type="text" id="registerLastName" class="form-control" placeholder="Sobrenome">
+          </div>
+        </div>
+        <input type="email" id="registerEmail" class="form-control mb-3" placeholder="Email">
+        <input type="tel" id="registerPhone" class="form-control mb-3" placeholder="Telefone (opcional)">
+        <input type="password" id="registerPassword" class="form-control mb-3" placeholder="Senha">
+        <button type="submit" id="registerButton" class="btn btn-success w-100 mb-2">Registrar</button>
+      </form>
+      <div class="divider">
+        <span>ou</span>
+      </div>
+      <button id="googleRegisterButton" onclick="loginWithGoogle(true)" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+        <i class="fab fa-google text-white" style="font-size: 18px;"></i>
+        <span>Registrar com Google</span>
+      </button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

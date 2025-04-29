@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendamento - Kerem Kesia</title>
+    <!-- Link to the favicon -->
+    <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Passions+Conflict&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navigation Bar --><!-- Navigation Bar with Search Box -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="index.html#">
+                <video autoplay muted loop playsinline height="40" class="me-2" style="border-radius: 4px;">
+                    <source src="assets/psy-animated-logo-2.mp4" type="video/mp4">
+                </video>
+                <span>Psicóloga Kerem Kesia</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#home">Início</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#services">Serviços</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#faq">Perguntas Frequentes</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="blog.html">Blog</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="beneficios.html">Benefícios</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="sobre.html">Sobre</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="agendamento.html">Agendamento</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="area-do-paciente.html"><i class="fas fa-lock me-1"></i>Área do Paciente</a>
+                    </li>
+                </ul>
+                
+                <div class="d-flex">
+                    <div class="input-group" style="width: 300px; max-width: 100%;">
+                        <input type="text" id="searchQuery" class="form-control" placeholder="Pesquisar..." style="height: 50px; font-size: 18px;">
+                        <button class="btn btn-outline-success" type="button" onclick="sendToWhatsApp()" style="height: 50px; font-size: 18px;">
+                            <i class="fab fa-whatsapp"></i>
+                        </button>
+                    </div>
+                </div>
+        </div>
+    </nav></nav>
+
+    <!-- Agendamento Section -->
+    <section class="booking-section py-5 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto text-center mb-5">
+                    <h1 class="display-4 mb-4">Agende sua Consulta</h1>
+                    <p class="lead">Escolha a melhor forma de agendar sua sessão de terapia</p>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body text-center p-5">
+                            <i class="fas fa-calendar-check fa-4x mb-4 text-primary"></i>
+                            <h3 class="card-title">Agendamento Online</h3>
+                            <p class="card-text">Agende sua consulta diretamente pelo nosso sistema online. Escolha o dia e horário que melhor se adapta à sua rotina.</p>
+                            <a href="https://calendly.com/keremkesia/30min?preview_source=et_card&month=2025-04" class="btn btn-primary btn-lg mt-3" target="_blank" rel="noopener noreferrer">Agendar Agora</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body text-center p-5">
+                            <i class="fab fa-whatsapp fa-4x mb-4 text-success"></i>
+                            <h3 class="card-title">Agendamento via WhatsApp</h3>
+                            <p class="card-text">Precisa de mais flexibilidade? Entre em contato diretamente pelo WhatsApp para agendar sua consulta.</p>
+                            <a href="https://wa.me/5562981995663" class="btn btn-success btn-lg mt-3" target="_blank">
+                                <i class="fab fa-whatsapp me-2"></i>Enviar Mensagem
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-5">
+                <div class="col-lg-8 mx-auto">
+                    <div class="card shadow-sm">
+                        <div class="card-body p-5">
+                            <h3 class="text-center mb-4">Informações Importantes</h3>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="fas fa-clock me-3 text-primary"></i>
+                                    <div>
+                                        <strong>Duração das Sessões:</strong> 50 minutos
+                                    </div>
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="fas fa-calendar-alt me-3 text-primary"></i>
+                                    <div>
+                                        <strong>Horário de Atendimento:</strong> Segunda a Sexta, 8h às 19h
+                                    </div>
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="fas fa-money-bill-wave me-3 text-primary"></i>
+                                    <div>
+                                        <strong>Formas de Pagamento:</strong> Cartões de Crédito e PIX
+                                    </div>
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="fas fa-exclamation-circle me-3 text-primary"></i>
+                                    <div>
+                                        <strong>Cancelamento:</strong> Até 24 horas antes da sessão
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-light py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <h3>Conecte-se com Kerem</h3>
+                    <div class="social-links mt-3">
+                        <a href="https://www.facebook.com/kerem.kesia" class="me-3" target="_blank"><i class="fab fa-facebook fa-2x"></i></a>
+                        <a href="https://www.instagram.com/psi.keremkesia/" class="me-3" target="_blank"><i class="fab fa-instagram fa-2x"></i></a>
+                        <a href="https://br.linkedin.com/in/kerem-kesia-06409112a" class="me-3" target="_blank"><i class="fab fa-linkedin fa-2x"></i></a>
+                        <a href="https://wa.me/message/ZZKTM6S5DOG6F1" target="_blank"><i class="fab fa-whatsapp fa-2x"></i></a>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <h3>Formas de Pagamento</h3>
+                    <p class="mt-3"><i class="fas fa-credit-card me-2"></i> Cartões de Crédito</p>
+                    <p><i class="fas fa-money-bill-wave me-2"></i> PIX</p>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <h3>Contato</h3>
+                    <p class="mt-3"><i class="fas fa-envelope me-2"></i> keremkesia@proton.me</p>
+                    <p><i class="fas fa-phone me-2"></i> +55 (62) 98199 5653</p>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <p class="mb-0"><strong>&copy; 2025 Psicologia Kerem Kesia. Todos os direitos reservados.</strong></p>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="script.js"></script>
+    <script src='https://cdn.jotfor.ms/s/umd/latest/for-embedded-agent.js'></script>
+    <script>
+      window.addEventListener("DOMContentLoaded", function() {
+        window.AgentInitializer.init({
+          agentRenderURL: "https://agent.jotform.com/01962253527c77ebafc9f48a89e7d22a83c8",
+          rootId: "JotformAgent-01962253527c77ebafc9f48a89e7d22a83c8",
+          formID: "01962253527c77ebafc9f48a89e7d22a83c8",
+          queryParams: ["skipWelcome=1", "maximizable=1"],
+          domain: "https://www.jotform.com",
+          isDraggable: false,
+          background: "linear-gradient(180deg, #6C73A8 0%, #6C73A8 100%)",
+          buttonBackgroundColor: "#0066C3",
+          buttonIconColor: "#FFFFFF",
+          variant: false,
+          customizations: {
+            "greeting": "Yes",
+            "greetingMessage": "Oi, tudo bem? Posso te ajudar? Sinta-se à vontade!",
+            "openByDefault": "No",
+            "pulse": "Yes",
+            "position": "right",
+            "autoOpenChatIn": "10000"
+          },
+          isVoice: false,
+        });
+      });
+    </script>
+    <script>
+       
+    function sendToWhatsApp() {
+        const query = document.getElementById('searchQuery').value;
+        const encodedQuery = encodeURIComponent(query);
+        window.open(`https://wa.me/message/ZZKTM6S5DOG6F1?text=${encodedQuery}`, '_blank');
+    }
+    </script>
+</body>
+</html> 

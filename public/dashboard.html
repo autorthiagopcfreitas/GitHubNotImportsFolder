@@ -1,0 +1,4183 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+    <style>
+.navbar a {
+  white-space: nowrap;
+  padding: 0 10px;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.navbar ul {
+  display: flex;
+  gap: 15px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Memory Game Styles */
+.memory-game-container {
+    text-align: center;
+            padding: 20px;
+        }
+
+.memory-game-board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    max-width: 400px;
+    margin: 0 auto;
+            background-color: #f8f9fa;
+    padding: 15px;
+            border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.memory-card {
+    aspect-ratio: 1;
+    cursor: pointer;
+    perspective: 1000px;
+}
+
+.card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+}
+
+.memory-card.flipped .card-inner {
+    transform: rotateY(180deg);
+}
+
+.card-front, .card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 2em;
+}
+
+.card-front {
+    background-color: #6c63ff;
+            color: white;
+}
+
+.card-back {
+    background-color: white;
+    color: black;
+    transform: rotateY(180deg);
+}
+
+.memory-card.matched .card-back {
+    background-color: #d4edda;
+}
+
+.memory-game-stats {
+            background-color: #f8f9fa;
+            padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+/* Existing styles */
+body {
+    font-family: sans-serif;
+            display: flex;
+    flex-direction: column;
+            align-items: center;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 2rem;
+}
+.controls {
+    margin-bottom: 1rem;
+}
+button {
+    margin: 0 0.3rem;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+            cursor: pointer;
+    border-radius: 4px;
+    border: none;
+}
+.easy { background: #d4edda; }
+.medium { background: #fff3cd; }
+.hard { background: #f8d7da; }
+canvas {
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    background: #fff;
+}
+.caption {
+    margin-top: 0.5rem;
+    color: goldenrod;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+/* Notification Button Styles */
+.btn-notify {
+    background-color: white !important;
+    color: black !important;
+    border: 1px solid gold !important;
+    transition: all 0.3s ease;
+}
+
+.btn-notify:hover {
+    background-color: #fffaf0 !important;
+    transform: scale(1.05);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.btn-notify:active {
+    transform: scale(0.95);
+}
+
+/* Toast notification styles */
+.notification-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    background-color: #f8f9fa;
+    border-left: 4px solid #5fbfbf;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    padding: 15px 20px;
+    border-radius: 4px;
+    max-width: 350px;
+    animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+</style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard - Kerem Kesia</title>
+<!-- Link to the favicon -->
+<link rel="icon" href="/assets/favicon.ico" type="image/x-icon"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Passions+Conflict&amp;display=swap" rel="stylesheet"/>
+<link href="styles.css" rel="stylesheet"/>
+<!-- Firebase scripts -->
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+<!-- Bootstrap JavaScript Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Chart.js para os gráficos -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Firebase initialization -->
+<script src="firebase-init.js"></script>
+
+<script>
+// Dashboard functionality
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast-custom alert alert-${type}`;
+  toast.innerHTML = `<i class="fas fa-check-circle me-2"></i>${message}`;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}
+
+// Save Daily Entry with real-time updates
+function saveDailyEntry() {
+  const moodRating = document.getElementById('moodRating').value;
+  const dailyNote = document.getElementById('dailyNote').value.trim();
+  const entryDate = new Date().toISOString();
+
+  const entry = {
+    date: entryDate,
+    mood: parseInt(moodRating),
+    note: dailyNote
+  };
+
+  // Salvar no localStorage
+  const savedLocally = saveEntryToLocalStorage(entry);
+  
+  if (!savedLocally) {
+    showToast('Erro ao salvar entrada localmente.', 'danger');
+    return;
+  }
+
+  showToast('Entrada salva com sucesso!');
+
+  document.getElementById('dailyNote').value = '';
+  document.getElementById('moodRating').value = '3';
+
+  // Save to Firebase if user is logged in
+  const user = typeof window.firebaseAuth !== 'undefined' && window.firebaseAuth ? window.firebaseAuth.currentUser : null;
+  if (user) {
+    try {
+      const db = window.firebase.database();
+      db.ref('dailyEntries/' + user.uid).push(entry).then(() => {
+        console.log('Entrada salva no Firebase com sucesso');
+        showToast('Entrada sincronizada com a nuvem!', 'success');
+      }).catch(error => {
+        console.error('Erro ao salvar entrada no Firebase:', error);
+        showToast('Entrada salva localmente, mas houve um erro ao sincronizar com a nuvem.', 'warning');
+      });
+    } catch (error) {
+      console.error('Erro ao acessar Firebase:', error);
+    }
+  }
+
+  // Atualizar gráficos e histórico
+  setTimeout(() => {
+    console.log('Atualizando gráficos após nova entrada...');
+    updateCharts();
+    updateHistoryPreview();
+    
+    // Mostrar toast informando que os gráficos foram atualizados
+    showToast('Gráficos atualizados com sucesso!', 'success');
+  }, 100);
+}
+
+// Função para salvar entrada no localStorage
+function saveEntryToLocalStorage(entry) {
+  try {
+    // Obter entradas existentes
+    let entries = [];
+    try {
+      const storedEntries = localStorage.getItem('moodEntries');
+      entries = JSON.parse(storedEntries || '[]');
+    } catch (error) {
+      console.error('Erro ao obter entradas do localStorage:', error);
+      entries = [];
+    }
+    
+    // Adicionar nova entrada
+    entries.push(entry);
+    
+    // Limitar a 30 entradas (para não sobrecarregar o localStorage)
+    if (entries.length > 30) {
+      entries = entries.slice(-30);
+    }
+    
+    // Salvar de volta no localStorage
+    localStorage.setItem('moodEntries', JSON.stringify(entries));
+    return true;
+  } catch (error) {
+    console.error('Erro ao salvar no localStorage:', error);
+    return false;
+  }
+}
+
+// Função para limpar todas as entradas locais
+function clearLocalEntries() {
+  if (confirm('Tem certeza que deseja limpar todos os dados de humor armazenados localmente? Esta ação não pode ser desfeita.')) {
+    try {
+      localStorage.removeItem('moodEntries');
+      showToast('Dados locais limpos com sucesso!', 'success');
+      
+      // Atualizar gráficos
+      updateCharts();
+      updateHistoryPreview();
+    } catch (error) {
+      console.error('Erro ao limpar dados locais:', error);
+      showToast('Erro ao limpar dados locais.', 'danger');
+    }
+  }
+}
+
+// Show History Modal - Enhanced implementation with filtering
+function showHistory(period = 'all') {
+  console.log('Função showHistory iniciada com período:', period);
+  
+  // Garantir que o período seja válido
+  if (!['all', 'month', 'week'].includes(period)) {
+    console.error('Período inválido:', period);
+    period = 'all';
+  }
+  
+  // Mostrar toast para indicar que o histórico está sendo carregado
+  showToast(`Carregando histórico ${period === 'all' ? 'completo' : period === 'month' ? 'mensal' : 'semanal'}...`, 'info');
+  
+  // Obter o modal existente
+  const historyModalEl = document.getElementById('historyModal');
+  
+  if (!historyModalEl) {
+    console.error('Modal não encontrado!');
+    showToast('Erro ao abrir o histórico. Modal não encontrado.', 'danger');
+    return;
+  }
+  
+  try {
+    // Atualizar conteúdo do histórico com o período selecionado
+    updateHistoryPreview(period);
+    
+    // Atualizar botões de filtro
+    const filterButtons = historyModalEl.querySelectorAll('.period-filter');
+    filterButtons.forEach(button => {
+      // Remover classe ativa de todos os botões
+      button.classList.remove('active');
+      
+      // Adicionar classe ativa ao botão do período atual
+      if (button.getAttribute('data-period') === period) {
+        button.classList.add('active');
+      }
+    });
+    
+    // Exibir o modal usando Bootstrap
+    console.log('Exibindo modal de histórico...');
+    
+    // Verificar se o Bootstrap está disponível
+    if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+      console.error('Bootstrap não disponível, usando alternativa');
+      historyModalEl.style.display = 'block';
+      historyModalEl.classList.add('show');
+      document.body.classList.add('modal-open');
+      
+      // Adicionar backdrop
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop fade show';
+      document.body.appendChild(backdrop);
+      
+      // Funcionalidade do botão de fechar
+      const closeButtons = historyModalEl.querySelectorAll('[data-bs-dismiss="modal"]');
+      closeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          historyModalEl.style.display = 'none';
+          historyModalEl.classList.remove('show');
+          document.body.classList.remove('modal-open');
+          if (document.querySelector('.modal-backdrop')) {
+            document.body.removeChild(document.querySelector('.modal-backdrop'));
+          }
+        });
+      });
+    } else {
+      // Usar Bootstrap se disponível
+      console.log('Usando Bootstrap para exibir o modal');
+      
+      // Verificar se já existe uma instância do modal
+      let historyModal = bootstrap.Modal.getInstance(historyModalEl);
+      
+      if (!historyModal) {
+        // Criar nova instância se não existir
+        historyModal = new bootstrap.Modal(historyModalEl, {
+          backdrop: true,
+          keyboard: true,
+          focus: true
+        });
+      }
+      
+      // Exibir o modal
+      historyModal.show();
+    }
+  } catch (error) {
+    console.error('Erro ao exibir o modal:', error);
+    alert('Erro ao abrir o histórico. Por favor, tente novamente.');
+  }
+}
+
+// Função para recarregar a página (F5)
+function reloadPage() {
+  // Mostrar um toast informando que a página será recarregada
+  showToast('Atualizando gráficos...', 'info');
+  
+  // Pequeno atraso para permitir que o toast seja exibido
+  setTimeout(() => {
+    window.location.reload();
+  }, 500);
+}
+
+// Notification System
+let notificationTimers = {};
+
+// Function to request notification permission
+async function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+        showToast("Seu navegador não suporta notificações", "warning");
+        return false;
+    }
+    
+    if (Notification.permission === "granted") {
+        return true;
+    }
+    
+    if (Notification.permission !== "denied") {
+        const permission = await Notification.requestPermission();
+        return permission === "granted";
+    }
+    
+    return false;
+}
+
+// Function to setup notification for a session
+async function setupNotification(sessionName, startTimeStr) {
+    const hasPermission = await requestNotificationPermission();
+    
+    if (!hasPermission) {
+        showToast("Permissão para notificações negada", "warning");
+        return;
+    }
+    
+    const startTime = new Date(startTimeStr);
+    const sessionId = startTimeStr; // Use the start time as a unique ID
+    
+    // Clear any existing timer for this session
+    if (notificationTimers[sessionId]) {
+        clearTimeout(notificationTimers[sessionId]);
+    }
+    
+    // Calculate time until 5 minutes before the session
+    const notificationTime = new Date(startTime.getTime() - 5 * 60 * 1000);
+    const now = new Date();
+    
+    // Time difference in milliseconds
+    let timeUntilNotification = notificationTime.getTime() - now.getTime();
+    
+    // If the notification time is in the past, show a message
+    if (timeUntilNotification < 0) {
+        showToast("Esta sessão começa em menos de 5 minutos ou já começou", "info");
+        return;
+    }
+    
+    // Format the notification time for display
+    const formattedNotificationTime = notificationTime.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    // Save the notification in localStorage
+    saveNotificationSetting(sessionId, sessionName, startTimeStr);
+    
+    // Set the timer for the notification
+    notificationTimers[sessionId] = setTimeout(() => {
+        sendSessionNotification(sessionName, startTime);
+    }, timeUntilNotification);
+    
+    // Show confirmation toast
+    showToast(`Você será notificado às ${formattedNotificationTime}, 5 minutos antes da sessão`, "success");
+}
+
+// Function to send the actual notification
+function sendSessionNotification(sessionName, startTime) {
+    const formattedTime = startTime.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    const notification = new Notification("Lembrete de Sessão", {
+        body: `Sua sessão "${sessionName}" começará em 5 minutos (${formattedTime})`,
+        icon: "/assets/favicon.ico"
+    });
+    
+    notification.onclick = function() {
+        window.focus();
+        this.close();
+    };
+    
+    // Also show a toast in case the user is already on the page
+    showCustomToast(`
+        <div class="d-flex align-items-center">
+            <i class="fas fa-bell text-primary me-3 fa-2x"></i>
+            <div>
+                <h5 class="mb-1">Lembrete de Sessão</h5>
+                <p class="mb-0">Sua sessão "${sessionName}" começará em 5 minutos (${formattedTime})</p>
+            </div>
+        </div>
+    `);
+}
+
+// Function to save notification setting to localStorage
+function saveNotificationSetting(sessionId, sessionName, startTimeStr) {
+    try {
+        // Get existing notifications
+        const notifications = JSON.parse(localStorage.getItem('sessionNotifications') || '{}');
+        
+        // Add or update this notification
+        notifications[sessionId] = {
+            sessionName,
+            startTime: startTimeStr,
+            notificationTime: new Date(new Date(startTimeStr).getTime() - 5 * 60 * 1000).toISOString()
+        };
+        
+        // Save back to localStorage
+        localStorage.setItem('sessionNotifications', JSON.stringify(notifications));
+    } catch (error) {
+        console.error('Error saving notification setting:', error);
+    }
+}
+
+// Function to show a custom toast notification
+function showCustomToast(htmlContent) {
+    const toast = document.createElement('div');
+    toast.className = 'notification-toast';
+    toast.innerHTML = htmlContent;
+    
+    document.body.appendChild(toast);
+    
+    // Remove the toast after 5 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Function to check for pending notifications on page load
+function checkPendingNotifications() {
+    try {
+        const notifications = JSON.parse(localStorage.getItem('sessionNotifications') || '{}');
+        const now = new Date();
+        
+        Object.entries(notifications).forEach(([sessionId, notification]) => {
+            const notificationTime = new Date(notification.notificationTime);
+            const startTime = new Date(notification.startTime);
+            
+            // If the session is in the future and notification time hasn't passed yet
+            if (startTime > now && notificationTime > now) {
+                const timeUntilNotification = notificationTime.getTime() - now.getTime();
+                
+                // Set timer for the notification
+                notificationTimers[sessionId] = setTimeout(() => {
+                    sendSessionNotification(notification.sessionName, startTime);
+                }, timeUntilNotification);
+            }
+        });
+    } catch (error) {
+        console.error('Error checking pending notifications:', error);
+    }
+}
+
+// Função para carregar e exibir os resultados dos testes
+function loadTestResults() {
+  try {
+    const testHistory = JSON.parse(localStorage.getItem('testHistory') || '[]');
+    console.log('Histórico de testes carregado:', testHistory);
+    
+    // Elementos do DOM
+    const anxietyResultsContainer = document.getElementById('anxiety-test-results');
+    const stressResultsContainer = document.getElementById('stress-test-results');
+    
+    if (!anxietyResultsContainer || !stressResultsContainer) {
+      console.error('Containers de resultados de teste não encontrados');
+      return;
+    }
+    
+    // Filtrar resultados por tipo de teste
+    const anxietyTests = testHistory.filter(test => test.test === 'anxiety');
+    const stressTests = testHistory.filter(test => test.test === 'stress');
+    
+    // Exibir resultados do teste de ansiedade
+    if (anxietyTests.length > 0) {
+      // Pegar o teste mais recente
+      const latestTest = anxietyTests[anxietyTests.length - 1];
+      const testDate = new Date(latestTest.date);
+      const formattedDate = testDate.toLocaleDateString('pt-BR');
+      
+      // Determinar a classe de cor com base no nível
+      let levelClass, levelText;
+      if (latestTest.level === 'minimal') {
+        levelClass = 'text-success';
+        levelText = 'Mínima';
+      } else if (latestTest.level === 'moderate') {
+        levelClass = 'text-warning';
+        levelText = 'Moderada';
+      } else {
+        levelClass = 'text-danger';
+        levelText = 'Severa';
+      }
+      
+      // Calcular porcentagem
+      const percentage = Math.round((latestTest.score / latestTest.maxScore) * 100);
+      
+      // Criar HTML para o resultado
+      anxietyResultsContainer.innerHTML = `
+        <div class="text-center mb-3">
+          <div class="display-6 ${levelClass} fw-bold">${levelText}</div>
+          <div class="small text-muted">Último teste: ${formattedDate}</div>
+        </div>
+        <div class="progress mb-2" style="height: 10px;">
+          <div class="progress-bar ${levelClass === 'text-success' ? 'bg-success' : levelClass === 'text-warning' ? 'bg-warning' : 'bg-danger'}" 
+               role="progressbar" style="width: ${percentage}%" 
+               aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="d-flex justify-content-between small mb-3">
+          <span>Pontuação: ${latestTest.score}/${latestTest.maxScore}</span>
+          <span>${percentage}%</span>
+        </div>
+        <div class="d-flex justify-content-between">
+          <a href="teste-ansiedade.html" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-redo me-1"></i>Refazer Teste
+          </a>
+          <button class="btn btn-sm btn-outline-secondary" onclick="showTestHistory('anxiety')">
+            <i class="fas fa-history me-1"></i>Histórico
+          </button>
+        </div>
+      `;
+    }
+    
+    // Exibir resultados do teste de estresse
+    if (stressTests.length > 0) {
+      // Pegar o teste mais recente
+      const latestTest = stressTests[stressTests.length - 1];
+      const testDate = new Date(latestTest.date);
+      const formattedDate = testDate.toLocaleDateString('pt-BR');
+      
+      // Determinar a classe de cor com base no nível
+      let levelClass, levelText;
+      if (latestTest.level === 'low') {
+        levelClass = 'text-success';
+        levelText = 'Baixo';
+      } else if (latestTest.level === 'moderate') {
+        levelClass = 'text-warning';
+        levelText = 'Moderado';
+      } else {
+        levelClass = 'text-danger';
+        levelText = 'Alto';
+      }
+      
+      // Calcular porcentagem
+      const percentage = Math.round((latestTest.score / latestTest.maxScore) * 100);
+      
+      // Criar HTML para o resultado
+      stressResultsContainer.innerHTML = `
+        <div class="text-center mb-3">
+          <div class="display-6 ${levelClass} fw-bold">${levelText}</div>
+          <div class="small text-muted">Último teste: ${formattedDate}</div>
+        </div>
+        <div class="progress mb-2" style="height: 10px;">
+          <div class="progress-bar ${levelClass === 'text-success' ? 'bg-success' : levelClass === 'text-warning' ? 'bg-warning' : 'bg-danger'}" 
+               role="progressbar" style="width: ${percentage}%" 
+               aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="d-flex justify-content-between small mb-3">
+          <span>Pontuação: ${latestTest.score}/${latestTest.maxScore}</span>
+          <span>${percentage}%</span>
+        </div>
+        <div class="d-flex justify-content-between">
+          <a href="teste-estresse.html" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-redo me-1"></i>Refazer Teste
+          </a>
+          <button class="btn btn-sm btn-outline-secondary" onclick="showTestHistory('stress')">
+            <i class="fas fa-history me-1"></i>Histórico
+          </button>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('Erro ao carregar resultados dos testes:', error);
+  }
+}
+
+// Função para sincronizar dados com o Firestore
+async function syncData() {
+  try {
+    // Verificar se o usuário está logado
+    if (!window.firebaseAuth || !window.firebaseAuth.currentUser) {
+      showToast('Você precisa estar logado para sincronizar dados.', 'warning');
+      return;
+    }
+    
+    // Mostrar indicador de sincronização
+    const syncStatus = document.getElementById('sync-status');
+    syncStatus.classList.remove('d-none');
+    
+    // Carregar testes do Firestore
+    const loadSuccess = await window.loadTestsFromFirestore();
+    
+    // Sincronizar testes locais com Firestore
+    const syncSuccess = await window.syncTestResults();
+    
+    // Registrar sessão
+    const sessionSuccess = await window.syncSessionData();
+    
+    // Atualizar a exibição dos resultados
+    loadTestResults();
+    
+    // Esconder indicador de sincronização
+    syncStatus.classList.add('d-none');
+    
+    if (loadSuccess && syncSuccess && sessionSuccess) {
+      showToast('Dados sincronizados com sucesso!', 'success');
+    } else {
+      showToast('Sincronização parcial. Verifique o console para detalhes.', 'warning');
+    }
+  } catch (error) {
+    console.error('Erro ao sincronizar dados:', error);
+    
+    // Esconder indicador de sincronização
+    const syncStatus = document.getElementById('sync-status');
+    syncStatus.classList.add('d-none');
+    
+    showToast('Erro ao sincronizar dados. Tente novamente.', 'danger');
+  }
+}
+
+// Função para exibir o histórico de testes
+function showTestHistory(testType) {
+  try {
+    const testHistory = JSON.parse(localStorage.getItem('testHistory') || '[]');
+    
+    // Filtrar resultados pelo tipo de teste
+    const filteredTests = testHistory.filter(test => test.test === testType);
+    
+    if (filteredTests.length === 0) {
+      alert('Nenhum histórico disponível para este teste.');
+      return;
+    }
+    
+    // Título do modal
+    const testTitle = testType === 'anxiety' ? 'Ansiedade' : 'Estresse';
+    
+    // Criar conteúdo do modal
+    let modalContent = `
+      <div class="modal fade" id="testHistoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Histórico de Testes - ${testTitle}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Pontuação</th>
+                      <th>Nível</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+    `;
+    
+    // Adicionar linhas da tabela
+    filteredTests.reverse().forEach(test => {
+      const testDate = new Date(test.date);
+      const formattedDate = testDate.toLocaleDateString('pt-BR') + ' ' + testDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+      
+      // Determinar o nível em português e a classe de cor
+      let levelText, levelClass;
+      if (testType === 'anxiety') {
+        if (test.level === 'minimal') {
+          levelText = 'Mínima';
+          levelClass = 'text-success';
+        } else if (test.level === 'moderate') {
+          levelText = 'Moderada';
+          levelClass = 'text-warning';
+        } else {
+          levelText = 'Severa';
+          levelClass = 'text-danger';
+        }
+      } else { // stress
+        if (test.level === 'low') {
+          levelText = 'Baixo';
+          levelClass = 'text-success';
+        } else if (test.level === 'moderate') {
+          levelText = 'Moderado';
+          levelClass = 'text-warning';
+        } else {
+          levelText = 'Alto';
+          levelClass = 'text-danger';
+        }
+      }
+      
+      // Calcular porcentagem
+      const percentage = Math.round((test.score / test.maxScore) * 100);
+      
+      modalContent += `
+        <tr>
+          <td>${formattedDate}</td>
+          <td>${test.score}/${test.maxScore} (${percentage}%)</td>
+          <td><span class="${levelClass}">${levelText}</span></td>
+        </tr>
+      `;
+    });
+    
+    modalContent += `
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Adicionar modal ao corpo do documento
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalContent;
+    document.body.appendChild(modalContainer);
+    
+    // Exibir o modal
+    const modal = new bootstrap.Modal(document.getElementById('testHistoryModal'));
+    modal.show();
+    
+    // Remover o modal do DOM quando for fechado
+    document.getElementById('testHistoryModal').addEventListener('hidden.bs.modal', function() {
+      document.body.removeChild(modalContainer);
+    });
+  } catch (error) {
+    console.error('Erro ao exibir histórico de testes:', error);
+    alert('Erro ao carregar o histórico de testes.');
+  }
+}
+
+// Fill History List dynamically with period filtering
+function updateHistoryPreview(period = 'all') {
+  console.log('Função updateHistoryPreview iniciada com período:', period);
+  
+  const historyContainer = document.getElementById('historyEntries');
+  
+  if (!historyContainer) {
+    console.error('Elemento historyEntries não encontrado');
+    return;
+  }
+  
+  // Atualizar título do modal com base no período
+  const modalTitle = document.getElementById('historyModalLabel');
+  if (modalTitle) {
+    let titleText = 'Histórico de Entradas';
+    if (period === 'week') {
+      titleText = 'Histórico Semanal';
+    } else if (period === 'month') {
+      titleText = 'Histórico Mensal';
+    } else {
+      titleText = 'Histórico Completo';
+    }
+    modalTitle.textContent = titleText;
+  }
+  
+  // Mostrar indicador de carregamento
+  historyContainer.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Carregando histórico...</p></div>';
+  
+  try {
+    // Obter entradas do localStorage
+    const localEntries = JSON.parse(localStorage.getItem('moodEntries') || '[]');
+    console.log('Entradas locais carregadas:', localEntries.length);
+    
+    // Função para processar e exibir as entradas
+    const processAndDisplayEntries = (allEntries) => {
+      if (allEntries.length === 0) {
+        historyContainer.innerHTML = '<div class="alert alert-info">Nenhuma entrada ainda. Registre seu humor diário para começar a acompanhar seu progresso.</div>';
+        return;
+      }
+
+      // Filtrar entradas com base no período selecionado
+      let filteredEntries = [...allEntries];
+      const today = new Date();
+      
+      if (period === 'week') {
+        // Filtrar para mostrar apenas a última semana
+        const oneWeekAgo = new Date(today);
+        oneWeekAgo.setDate(today.getDate() - 7);
+        
+        filteredEntries = filteredEntries.filter(entry => {
+          try {
+            const entryDate = new Date(entry.date);
+            return entryDate >= oneWeekAgo;
+          } catch (e) {
+            console.error('Erro ao filtrar entrada por semana:', e);
+            return false;
+          }
+        });
+        
+        console.log(`Filtrado para ${filteredEntries.length} entradas da última semana`);
+      } else if (period === 'month') {
+        // Filtrar para mostrar apenas o último mês
+        const oneMonthAgo = new Date(today);
+        oneMonthAgo.setMonth(today.getMonth() - 1);
+        
+        filteredEntries = filteredEntries.filter(entry => {
+          try {
+            const entryDate = new Date(entry.date);
+            return entryDate >= oneMonthAgo;
+          } catch (e) {
+            console.error('Erro ao filtrar entrada por mês:', e);
+            return false;
+          }
+        });
+        
+        console.log(`Filtrado para ${filteredEntries.length} entradas do último mês`);
+      }
+      
+      // Verificar se há entradas após a filtragem
+      if (filteredEntries.length === 0) {
+        let mensagem = 'Nenhuma entrada encontrada para o período selecionado.';
+        if (period === 'week') {
+          mensagem = 'Nenhuma entrada encontrada na última semana.';
+        } else if (period === 'month') {
+          mensagem = 'Nenhuma entrada encontrada no último mês.';
+        }
+        
+        historyContainer.innerHTML = `<div class="alert alert-info">${mensagem}</div>`;
+        return;
+      }
+
+      // Criar uma cópia para não modificar o array original e ordenar por data (mais recente primeiro)
+      const sortedEntries = filteredEntries.sort((a, b) => {
+        try {
+          return new Date(b.date) - new Date(a.date);
+        } catch (e) {
+          console.error('Erro ao ordenar entradas:', e);
+          return 0;
+        }
+      });
+
+      // Agrupar entradas por mês
+      const entriesByMonth = {};
+      
+      sortedEntries.forEach(entry => {
+        try {
+          const date = new Date(entry.date);
+          const monthYear = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+          
+          if (!entriesByMonth[monthYear]) {
+            entriesByMonth[monthYear] = [];
+          }
+          
+          entriesByMonth[monthYear].push(entry);
+        } catch (e) {
+          console.error('Erro ao processar entrada para agrupamento:', entry, e);
+        }
+      });
+      
+      // Gerar HTML para cada grupo de mês
+      let listHtml = '';
+      
+      Object.keys(entriesByMonth).forEach(monthYear => {
+        listHtml += `
+          <div class="month-group mb-4">
+            <h5 class="month-title border-bottom pb-2 mb-3">${monthYear}</h5>
+            <div class="month-entries">
+        `;
+        
+        entriesByMonth[monthYear].forEach(entry => {
+          try {
+            const mood = getMoodText(entry.mood);
+            const emoji = getMoodEmoji(entry.mood);
+            const date = new Date(entry.date);
+            const dateFormatted = date.toLocaleDateString('pt-BR', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: 'numeric'
+            });
+            const timeFormatted = date.toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+
+            listHtml += `
+              <div class="history-card card mb-3 shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="card-title mb-0">
+                      <span class="badge bg-${getBadgeColor(entry.mood)}">${emoji} ${mood}</span>
+                    </h6>
+                    <div class="text-end">
+                      <div class="text-muted">${dateFormatted}</div>
+                      <small class="text-muted">${timeFormatted}</small>
+                    </div>
+                  </div>
+                  <p class="card-text mt-2">${entry.note || '<em class="text-muted">Sem observações</em>'}</p>
+                </div>
+              </div>
+            `;
+          } catch (e) {
+            console.error('Erro ao processar entrada para exibição:', entry, e);
+          }
+        });
+        
+        listHtml += `
+            </div>
+          </div>
+        `;
+      });
+
+      // Adicionar estatísticas
+      const totalEntries = sortedEntries.length;
+      const averageMood = (sortedEntries.reduce((sum, entry) => sum + entry.mood, 0) / totalEntries).toFixed(1);
+      
+      const statsHtml = `
+        <div class="alert alert-primary mb-4">
+          <h6 class="mb-2"><i class="fas fa-chart-bar me-2"></i>Estatísticas</h6>
+          <div class="row">
+            <div class="col-6">
+              <small>Total de entradas: <strong>${totalEntries}</strong></small>
+            </div>
+            <div class="col-6">
+              <small>Humor médio: <strong>${averageMood}</strong>/5</small>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      historyContainer.innerHTML = statsHtml + listHtml;
+    };
+    
+    // Verificar se o Firebase está disponível e o usuário está logado
+    if (typeof window.firebaseAuth !== 'undefined' && window.firebaseAuth && window.firebaseAuth.currentUser) {
+      const user = window.firebaseAuth.currentUser;
+      console.log('Usuário logado, obtendo entradas do Firebase');
+      
+      try {
+        const db = window.firebase.database();
+        db.ref('dailyEntries/' + user.uid).once('value').then(snapshot => {
+          const firebaseEntries = [];
+          snapshot.forEach(childSnapshot => {
+            try {
+              firebaseEntries.push({
+                date: new Date(childSnapshot.val().date),
+                mood: childSnapshot.val().mood,
+                note: childSnapshot.val().note || ''
+              });
+            } catch (e) {
+              console.error('Erro ao processar entrada do Firebase:', childSnapshot.val(), e);
+            }
+          });
+          
+          console.log('Entradas obtidas do Firebase:', firebaseEntries.length);
+          
+          // Combinar entradas locais e do Firebase
+          let allEntries = [...localEntries, ...firebaseEntries];
+          
+          // Remover duplicatas (baseado na data)
+          const uniqueDates = {};
+          allEntries = allEntries.filter(entry => {
+            try {
+              const dateStr = new Date(entry.date).toISOString().split('T')[0];
+              if (uniqueDates[dateStr]) return false;
+              uniqueDates[dateStr] = true;
+              return true;
+            } catch (e) {
+              console.error('Erro ao processar data da entrada:', entry, e);
+              return false;
+            }
+          });
+          
+          processAndDisplayEntries(allEntries);
+        }).catch(error => {
+          console.error('Erro ao obter entradas do Firebase:', error);
+          processAndDisplayEntries(localEntries);
+        });
+      } catch (error) {
+        console.error('Erro ao acessar Firebase:', error);
+        processAndDisplayEntries(localEntries);
+      }
+    } else {
+      console.log('Usuário não logado, usando apenas entradas locais');
+      processAndDisplayEntries(localEntries);
+    }
+  } catch (error) {
+    console.error('Erro ao processar histórico:', error);
+    historyContainer.innerHTML = '<div class="alert alert-danger">Erro ao carregar histórico. Por favor, tente novamente.</div>';
+  }
+}
+
+// Get mood text
+function getMoodText(mood) {
+  const moods = { 5: 'Excelente', 4: 'Bom', 3: 'Normal', 2: 'Triste', 1: 'Muito Triste' };
+  return moods[mood] || 'Indefinido';
+}
+
+// Get emoji based on mood
+function getMoodEmoji(mood) {
+  const emojis = { 5: '😊', 4: '🙂', 3: '😐', 2: '😔', 1: '😢' };
+  return emojis[mood] || '❓';
+}
+
+// Get color badge based on mood
+function getBadgeColor(mood) {
+  switch (mood) {
+    case 5: return 'primary';
+    case 4: return 'success';
+    case 3: return 'secondary';
+    case 2: return 'warning';
+    case 1: return 'danger';
+    default: return 'light';
+  }
+}
+
+// Initialize Bootstrap components and button events
+window.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM carregado, inicializando componentes Bootstrap...');
+  
+  // Verificar se o Bootstrap está disponível
+  if (typeof bootstrap === 'undefined') {
+    console.error('Bootstrap não está disponível! Verifique se o script foi carregado corretamente.');
+    return;
+  }
+  
+  try {
+    // Inicializar todos os dropdowns do Bootstrap
+    const dropdownElementList = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+    console.log('Dropdowns encontrados:', dropdownElementList.length);
+    
+    dropdownElementList.forEach(dropdownToggleEl => {
+      try {
+        new bootstrap.Dropdown(dropdownToggleEl);
+        console.log('Dropdown inicializado:', dropdownToggleEl);
+      } catch (e) {
+        console.error('Erro ao inicializar dropdown:', e);
+      }
+    });
+    
+    // Inicializar tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(tooltipTriggerEl => {
+      try {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+      } catch (e) {
+        console.error('Erro ao inicializar tooltip:', e);
+      }
+    });
+    
+    // Adicionar event listeners para os botões de histórico
+    document.querySelectorAll('[onclick*="showHistory"]').forEach(btn => {
+      console.log('Botão de histórico encontrado:', btn);
+      btn.addEventListener('click', function() {
+        const period = this.getAttribute('data-period') || 'all';
+        console.log('Clique no botão de histórico detectado, período:', period);
+      });
+    });
+    
+    // Adicionar event listeners para os botões de filtro no modal
+    const historyModal = document.getElementById('historyModal');
+    if (historyModal) {
+      const filterButtons = historyModal.querySelectorAll('.period-filter');
+      console.log('Botões de filtro encontrados no modal:', filterButtons.length);
+      
+      filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const selectedPeriod = this.getAttribute('data-period');
+          console.log('Botão de filtro clicado, período:', selectedPeriod);
+          
+          // Atualizar classe ativa
+          filterButtons.forEach(btn => btn.classList.remove('active'));
+          this.classList.add('active');
+          
+          // Atualizar conteúdo do histórico
+          updateHistoryPreview(selectedPeriod);
+        });
+      });
+    }
+    
+    console.log('Inicialização de componentes Bootstrap concluída!');
+  } catch (e) {
+    console.error('Erro ao inicializar componentes Bootstrap:', e);
+  }
+});
+
+
+// Função para adicionar uma entrada de teste
+function addTestEntry() {
+  try {
+    // Criar uma entrada de teste
+    const testEntry = {
+      date: new Date().toISOString(),
+      mood: Math.floor(Math.random() * 5) + 1, // Valor aleatório entre 1 e 5
+      note: `Entrada de teste criada em ${new Date().toLocaleString('pt-BR')}`
+    };
+    
+    // Salvar no localStorage
+    const savedLocally = saveEntryToLocalStorage(testEntry);
+    
+    if (savedLocally) {
+      showToast('Entrada de teste adicionada com sucesso!', 'success');
+      
+      // Atualizar o histórico
+      setTimeout(() => {
+        updateHistoryPreview(document.querySelector('.period-filter.active')?.getAttribute('data-period') || 'all');
+        updateCharts();
+      }, 500);
+    } else {
+      showToast('Erro ao adicionar entrada de teste.', 'danger');
+    }
+  } catch (e) {
+    console.error('Erro ao adicionar entrada de teste:', e);
+    showToast('Erro ao adicionar entrada de teste.', 'danger');
+  }
+}
+
+// Função para depurar o localStorage
+function debugLocalStorage() {
+  try {
+    const entries = JSON.parse(localStorage.getItem('moodEntries') || '[]');
+    console.log('Conteúdo do localStorage (moodEntries):', entries);
+    
+    const historyContainer = document.getElementById('historyEntries');
+    if (historyContainer) {
+      let debugHtml = `
+        <div class="alert alert-info">
+          <h6><i class="fas fa-bug me-2"></i>Informações de Depuração</h6>
+          <p>Entradas encontradas: ${entries.length}</p>
+          <pre class="bg-light p-2 mt-2" style="max-height: 300px; overflow: auto;">${JSON.stringify(entries, null, 2)}</pre>
+        </div>
+      `;
+      historyContainer.innerHTML = debugHtml;
+    }
+    
+    showToast(`Encontradas ${entries.length} entradas no localStorage`, 'info');
+  } catch (e) {
+    console.error('Erro ao depurar localStorage:', e);
+    showToast('Erro ao depurar localStorage', 'danger');
+  }
+}
+
+function generateCodeVerifier() {
+        const array = new Uint8Array(32);
+        window.crypto.getRandomValues(array);
+        return base64URLEncode(array);
+    }
+
+    // Generate code challenge from verifier
+    function generateCodeChallenge(verifier) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(verifier);
+        return window.crypto.subtle.digest('SHA-256', data)
+            .then(hash => base64URLEncode(new Uint8Array(hash)));
+    }
+
+    // Base64URL encode an array
+    function base64URLEncode(array) {
+        return btoa(String.fromCharCode.apply(null, array))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+    }
+</script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+<script src="firebase-init.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <div class="container">
+<a class="navbar-brand" href="index.html#">
+<video autoplay="" class="me-2" loop="" muted="" playsinline="">
+<source src="assets/psy-animated-logo-2.mp4" type="video/mp4"/>
+                </video>
+                <span>Psicóloga Kerem Kesia</span>
+            </a>
+<button class="navbar-toggler" data-bs-target="#navbarNav" data-bs-toggle="collapse" type="button">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+<li class="nav-item"><a class="nav-link" href="index.html#home">Início</a></li>
+<li class="nav-item"><a class="nav-link" href="index.html#services">Serviços</a></li>
+<li class="nav-item"><a class="nav-link" href="index.html#faq">Perguntas Frequentes</a></li>
+<li class="nav-item"><a class="nav-link" href="blog.html">Blog</a></li>
+<li class="nav-item"><a class="nav-link" href="beneficios.html">Benefícios</a></li>
+<li class="nav-item"><a class="nav-link" href="sobre.html">Sobre</a></li>
+<li class="nav-item"><a class="nav-link" href="agendamento.html">Agendamento</a></li>
+<li class="nav-item"><a class="nav-link" href="area-do-paciente.html"><i class="fas fa-lock me-1"></i>Área do Paciente</a></li>
+                </ul>
+
+                <div class="d-flex">
+                    <div class="input-group" style="width: 300px; max-width: 100%;">
+                        <input type="text" id="searchQuery" class="form-control" placeholder="Pesquisar..." style="height: 50px; font-size: 18px;">
+                        <button class="btn btn-outline-success" type="button" onclick="sendToWhatsApp()" style="height: 50px; font-size: 18px;">
+                            <i class="fab fa-whatsapp"></i>
+                        </button>
+                    </div>
+                </div>
+</nav>
+<!-- Loading Overlay -->
+<div id="loadingOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 9999;">
+<div class="text-center">
+<div class="spinner-border text-primary mb-3" role="status">
+<span class="visually-hidden">Carregando...</span>
+        </div>
+<div>Carregando sua área...</div>
+                    </div>
+                </div>
+<!-- CONTEÚDO PRINCIPAL -->
+<div class="container mt-5 pt-5" id="mainContent" style="display: none;">
+<div class="dashboard-header text-center">
+<h1>Bem-vindo(a), <span id="welcomeName" style="color: #CCD4FF;">Paciente</span>!</h1>
+<p class="lead">Aqui você pode gerenciar suas sessões, acessar recursos e acompanhar seu progresso.</p>
+            </div>
+<!-- Add Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Daily Tracker Section -->
+<div class="card mt-4">
+<div class="card-header d-flex justify-content-between align-items-center">
+<h4 class="mb-0"><i class="fas fa-chart-line me-2"></i> Rastreador Diário</h4>
+<div class="btn-group">
+  <button type="button" class="btn btn-primary" onclick="showHistory('all')" data-period="all" id="btnHistoryAll">
+    <i class="fas fa-history me-2"></i>Ver Histórico
+  </button>
+  <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" id="btnHistoryDropdown">
+    <span class="visually-hidden">Toggle Dropdown</span>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item" type="button" onclick="showHistory('all')" data-period="all">
+      <i class="fas fa-calendar-alt me-2"></i>Histórico Completo
+    </button></li>
+    <li><button class="dropdown-item" type="button" onclick="showHistory('month')" data-period="month">
+      <i class="fas fa-calendar-day me-2"></i>Histórico Mensal
+    </button></li>
+    <li><button class="dropdown-item" type="button" onclick="showHistory('week')" data-period="week">
+      <i class="fas fa-calendar-week me-2"></i>Histórico Semanal
+    </button></li>
+  </ul>
+</div>
+                        </div>
+                        <div class="card-body">
+<div id="dailyTrackerForm">
+  <div class="row">
+    <div class="col-md-4">
+      <div class="form-group mb-3">
+        <label class="form-label" for="moodRating">Como você está se sentindo hoje?</label>
+        <select class="form-select" id="moodRating">
+          <option value="5">😊 Excelente (+2)</option>
+          <option value="4">🙂 Bom (+1)</option>
+          <option value="3" selected>😐 Normal (0)</option>
+          <option value="2">😔 Triste (-1)</option>
+          <option value="1">😢 Muito triste (-2)</option>
+        </select>
+    </div>
+      </div>
+    <div class="col-md-8">
+      <div class="form-group">
+        <label class="form-label" for="dailyNote">Observações do dia:</label>
+        <textarea class="form-control" id="dailyNote" placeholder="Como foi seu dia? O que você aprendeu?" rows="2"></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex justify-content-between align-items-center mt-3">
+    <div>
+      <button class="btn btn-primary" onclick="saveDailyEntry()">
+        <i class="fas fa-save me-2"></i>Salvar Entrada
+      </button>
+      <button class="btn btn-warning ms-2" onclick="reloadPage()" title="Recarregar página para atualizar gráficos">
+        <i class="fas fa-sync-alt me-2"></i>Atualizar Gráficos
+      </button>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm" onclick="clearLocalEntries()" title="Limpar todas as entradas locais">
+      <i class="fas fa-trash-alt me-2"></i>Limpar Dados Locais
+    </button>
+  </div>
+</div>
+<!-- Charts Section -->
+<div class="row mt-4">
+  <div class="col-12 mb-2">
+    <button class="btn btn-sm btn-outline-secondary float-end" onclick="updateCharts()" title="Atualizar gráficos">
+      <i class="fas fa-sync-alt me-1"></i>Atualizar Gráficos
+    </button>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Humor (Últimos 7 dias)</h5>
+        <canvas id="moodChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Distribuição de Humor</h5>
+        <canvas id="moodDistributionChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-12 mt-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">
+          Soma de Sentimentos Diários (Últimos 7 dias)
+          <button class="btn btn-sm btn-outline-secondary float-end" onclick="updateSentimentSumChart()" title="Atualizar gráfico de sentimentos">
+            <i class="fas fa-sync-alt me-1"></i>Atualizar
+          </button>
+        </h5>
+        <p class="text-muted small">Este gráfico mostra a soma dos valores de humor para cada dia. Valores positivos indicam dias predominantemente bons, valores negativos indicam dias predominantemente ruins.</p>
+        <canvas id="sentimentSumChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- History Modal -->
+<div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="historyModalLabel">Histórico de Entradas</h5>
+        <div class="ms-auto me-2">
+          <div class="btn-group btn-group-sm" role="group" aria-label="Filtro de período">
+            <button type="button" class="btn btn-outline-primary period-filter" data-period="all">Completo</button>
+            <button type="button" class="btn btn-outline-primary period-filter" data-period="month">Mensal</button>
+            <button type="button" class="btn btn-outline-primary period-filter" data-period="week">Semanal</button>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="historyEntries" class="p-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-info btn-sm me-auto" onclick="debugLocalStorage()">
+          <i class="fas fa-bug me-1"></i>Debug
+        </button>
+        <button type="button" class="btn btn-success btn-sm me-2" onclick="addTestEntry()">
+          <i class="fas fa-plus me-1"></i>Adicionar Teste
+        </button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<!-- Personality Tests Section -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h4 class="mb-0"><i class="fas fa-user-edit me-2"></i> Testes de Personalidade</h4>
+    </div>
+    <div class="card-body">
+        <!-- Test Results Summary -->
+        <div id="test-results-summary" class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Seus Resultados</h5>
+                <div>
+                    <span id="sync-status" class="badge bg-secondary d-none">
+                        <i class="fas fa-sync-alt me-1"></i> Sincronizando...
+                    </span>
+                    <button class="btn btn-sm btn-outline-primary ms-2" onclick="syncData()" title="Sincronizar dados com a nuvem">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">Ansiedade</h6>
+                        </div>
+                        <div class="card-body" id="anxiety-test-results">
+                            <div class="text-center py-3">
+                                <p class="text-muted">Nenhum teste realizado ainda</p>
+                                <a href="teste-ansiedade.html" class="btn btn-sm btn-outline-primary mt-2">
+                                    <i class="fas fa-external-link-alt me-1"></i>Fazer Teste
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">Estresse</h6>
+                        </div>
+                        <div class="card-body" id="stress-test-results">
+                            <div class="text-center py-3">
+                                <p class="text-muted">Nenhum teste realizado ainda</p>
+                                <a href="teste-estresse.html" class="btn btn-sm btn-outline-primary mt-2">
+                                    <i class="fas fa-external-link-alt me-1"></i>Fazer Teste
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Available Tests -->
+        <h5 class="mb-3"><i class="fas fa-clipboard-list me-2"></i>Testes Disponíveis</h5>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5>Teste de Ansiedade</h5>
+                        <p>Avalie seus níveis de ansiedade e receba dicas personalizadas</p>
+                        <a href="teste-ansiedade.html" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-2"></i>Iniciar Teste
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5>Teste de Estresse</h5>
+                        <p>Identifique seus níveis de estresse e aprenda a gerenciá-los</p>
+                        <a href="teste-estresse.html" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-2"></i>Iniciar Teste
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="card mt-4">
+<div class="card-header">
+<h4 class="mb-0"><i class="fas fa-calendar-check me-2"></i> Suas Sessões:</h4>
+</div>
+<div class="card-body">
+<div class="mb-3">
+<p>Aqui você pode visualizar suas consultas agendadas e marcar novas sessões.</p>
+<div class="d-flex gap-2 mb-4">
+<a class="btn btn-primary" href="https://calendly.com/psicologakeremkesia/30min?month=2025-04" target="_blank">
+<i class="fas fa-calendar-plus me-2"></i> Agendar Consulta
+</a>
+<button class="btn btn-outline-primary" onclick="displayUserEvents()">
+<i class="fas fa-sync-alt me-2"></i> Atualizar Sessões
+</button>
+</div>
+</div>
+<div id="appointmentsList">
+<div class="alert alert-info">Carregando sessões...</div>
+</div>
+</div>
+</div>
+<!-- Mind Games Section -->
+<div class="card mt-4">
+                        <div class="card-header">
+<h4 class="mb-0"><i class="fas fa-brain me-2"></i> Desafios Mentais</h4>
+                        </div>
+                        <div class="card-body">
+<div class="row g-4">
+<div class="col-md-4">
+<div class="card h-100">
+<div class="card-body text-center">
+<i class="fas fa-memory fa-3x mb-3 text-primary"></i>
+<h5>Jogo de Memória</h5>
+<p>Treine sua memória combinando pares de cartas</p>
+<button class="btn btn-primary" onclick="startMemoryGame()">
+<i class="fas fa-play me-2"></i>Jogar
+                            </button>
+                            </div>
+                                </div>
+                            </div>
+<div class="col-md-4">
+<div class="card h-100">
+<div class="card-body text-center">
+<i class="fas fa-puzzle-piece fa-3x mb-3 text-success"></i>
+<h5>Quebra-Cabeça</h5>
+<p>Desafie sua mente com quebra-cabeças deslizantes</p>
+<button class="btn btn-primary" onclick="startPuzzleGame()">
+<i class="fas fa-play me-2"></i>Jogar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+<div class="col-md-4">
+<div class="card h-100">
+<div class="card-body text-center">
+<i class="fas fa-lightbulb fa-3x mb-3 text-warning"></i>
+<h5>Raciocínio</h5>
+<p>Resolva problemas de lógica e raciocínio</p>
+<button class="btn btn-primary" onclick="startReasoningGame()">
+<i class="fas fa-play me-2"></i>Jogar
+                            </button>
+                        </div>
+                            </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+<!-- Game Modal -->
+<div aria-hidden="true" aria-labelledby="gameModalLabel" class="modal fade" id="gameModal" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title" id="gameModalTitle">Jogo</h5>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+            </div>
+<div class="modal-body">
+<div id="gameContainer"></div>
+        </div>
+                    </div>
+                </div>
+                </div>
+<script>
+    // Configurações do Calendly
+    const CALENDLY_SCHEDULING_URL = "https://calendly.com/keremkesia/30min?preview_source=et_card&month=2025-04";
+    
+    // Token de acesso pessoal da psicóloga (deve ser armazenado de forma segura em produção)
+    // Normalmente, isso seria feito através de uma função de backend para proteger o token
+    const CALENDLY_API_KEY = "eyJraWQiOiIxY2UxZTEzNjE3ZGNmNzY2YjNjZWJjY2Y4ZGM1YmFmYThhNjVlNjg0MDIzZjdjMzJiZTgzNDliMjM4MDEzNWI0IiwidHlwIjoiUEFUIiwiYWxnIjoiRVMyNTYifQ.eyJpc3MiOiJodHRwczovL2F1dGguY2FsZW5kbHkuY29tIiwiaWF0IjoxNzQ1ODM4ODY1LCJqdGkiOiIzZmZlMmEzYS0xMjM1LTRlOWYtOWIwMi05MGE0NzgwNGU0MWQiLCJ1c2VyX3V1aWQiOiJmNDBlNzk2Mi0wNDVjLTQzMWEtYjhjZi1mNDNiMWMyNGNjOTIifQ.zF2spoQdxSkqAstPTkDWjc_sg0X7bxexE-ELYul57ZJoPt9ZT9FPLR8HX78gP1vchVjVFPCIitaJfiDkwoOrCg";
+    
+    // URL da API do Calendly
+    const CALENDLY_API_BASE_URL = "https://api.calendly.com";
+
+    // Função para abrir o link de agendamento do Calendly
+    function openCalendlyScheduling() {
+        window.open(CALENDLY_SCHEDULING_URL, '_blank');
+        showToast("Abrindo página de agendamento...", "info");
+    }
+    
+    // Função para buscar eventos agendados pelo usuário atual
+    async function fetchUserAppointments() {
+        const user = window.firebaseAuth ? window.firebaseAuth.currentUser : null;
+        if (!user || !user.email) {
+            console.error("Usuário não está logado ou não tem email");
+            return [];
+        }
+        
+        try {
+            // Em um ambiente de produção, esta chamada deveria ser feita através de um backend
+            // para proteger o token de API e evitar exposição no frontend
+            console.log(`Buscando agendamentos para o email: ${user.email}`);
+            
+            // Primeiro, obter informações do usuário da psicóloga (proprietária do calendário)
+            const userResponse = await fetch(`${CALENDLY_API_BASE_URL}/users/me`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${CALENDLY_API_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!userResponse.ok) {
+                throw new Error(`Erro ao obter informações do usuário: ${userResponse.status}`);
+            }
+            
+            const userData = await userResponse.json();
+            console.log("Dados do usuário Calendly:", userData);
+            
+            // Obter o URI do usuário
+            const userUri = userData.resource.uri;
+            
+            // Definir intervalo de datas para buscar eventos (últimos 30 dias até próximos 90 dias)
+            const now = new Date();
+            const minStartTime = new Date(now);
+            minStartTime.setDate(now.getDate() - 30);
+            
+            const maxStartTime = new Date(now);
+            maxStartTime.setDate(now.getDate() + 90);
+            
+            // Buscar eventos agendados
+            const eventsUrl = new URL(`${CALENDLY_API_BASE_URL}/scheduled_events`);
+            eventsUrl.searchParams.append("user", userUri);
+            eventsUrl.searchParams.append("min_start_time", minStartTime.toISOString());
+            eventsUrl.searchParams.append("max_start_time", maxStartTime.toISOString());
+            eventsUrl.searchParams.append("status", "active");
+            
+            const eventsResponse = await fetch(eventsUrl.toString(), {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${CALENDLY_API_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!eventsResponse.ok) {
+                throw new Error(`Erro ao buscar eventos: ${eventsResponse.status}`);
+            }
+            
+            const eventsData = await eventsResponse.json();
+            console.log("Eventos encontrados:", eventsData);
+            
+            // Array para armazenar os eventos do usuário atual
+            const userAppointments = [];
+            
+            // Para cada evento, verificar se o email do usuário está entre os convidados
+            for (const event of eventsData.collection) {
+                // Buscar detalhes do evento, incluindo convidados
+                const eventUuid = event.uri.split('/').pop();
+                const inviteesUrl = `${CALENDLY_API_BASE_URL}/scheduled_events/${eventUuid}/invitees`;
+                
+                const inviteesResponse = await fetch(inviteesUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${CALENDLY_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!inviteesResponse.ok) {
+                    console.warn(`Erro ao buscar convidados para o evento ${eventUuid}: ${inviteesResponse.status}`);
+                    continue;
+                }
+                
+                const inviteesData = await inviteesResponse.json();
+                console.log(`Convidados para o evento ${eventUuid}:`, inviteesData);
+                
+                // Verificar se o email do usuário atual está entre os convidados
+                const userInvitee = inviteesData.collection.find(invitee => 
+                    invitee.email.toLowerCase() === user.email.toLowerCase()
+                );
+                
+                if (userInvitee) {
+                    // Este evento pertence ao usuário atual
+                    userAppointments.push({
+                        id: eventUuid,
+                        start_time: event.start_time,
+                        end_time: event.end_time,
+                        name: event.name || "Sessão de Terapia",
+                        location: event.location?.type || "Online",
+                        status: event.status,
+                        cancellation_url: userInvitee.cancel_url || null,
+                        reschedule_url: userInvitee.reschedule_url || null
+                    });
+                }
+            }
+            
+            // Se não encontrou nenhum evento real, usar dados de demonstração
+            if (userAppointments.length === 0) {
+                console.log("Nenhum evento encontrado para o usuário. Usando dados de demonstração.");
+                
+                // Dados de demonstração
+                const mockAppointments = [
+                    {
+                        id: "mock-event-1",
+                        start_time: new Date(Date.now() + 86400000).toISOString(), // Amanhã
+                        end_time: new Date(Date.now() + 86400000 + 3600000).toISOString(),
+                        name: "Sessão de Terapia (Demo)",
+                        location: "Google Meet",
+                        status: "active",
+                        cancellation_url: "#",
+                        reschedule_url: "#"
+                    }
+                ];
+                
+                // Adicionar um evento passado para demonstração
+                const pastDate = new Date();
+                pastDate.setDate(pastDate.getDate() - 3);
+                mockAppointments.push({
+                    id: "mock-event-2",
+                    start_time: new Date(pastDate).toISOString(),
+                    end_time: new Date(pastDate.getTime() + 3600000).toISOString(),
+                    name: "Sessão de Terapia (Demo Passada)",
+                    location: "Google Meet",
+                    status: "completed",
+                    cancellation_url: null,
+                    reschedule_url: null
+                });
+                
+                return mockAppointments;
+            }
+            
+            return userAppointments;
+        } catch (error) {
+            console.error("Erro ao buscar agendamentos:", error);
+            
+            // Em caso de erro, retornar dados de demonstração
+            console.log("Usando dados de demonstração devido a erro.");
+            
+            const mockAppointments = [
+                {
+                    id: "mock-error-1",
+                    start_time: new Date(Date.now() + 86400000).toISOString(),
+                    end_time: new Date(Date.now() + 86400000 + 3600000).toISOString(),
+                    name: "Sessão de Terapia (Demo - Erro)",
+                    location: "Google Meet",
+                    status: "active",
+                    cancellation_url: "#",
+                    reschedule_url: "#"
+                }
+            ];
+            
+            return mockAppointments;
+        }
+    }
+    
+    // Nova função para exibir os eventos do usuário
+    async function displayUserEvents() {
+        console.log('Iniciando displayUserEvents');
+        const appointmentsList = document.getElementById("appointmentsList");
+        if (!appointmentsList) {
+            console.error('Elemento appointmentsList não encontrado');
+            return;
+        }
+        
+        appointmentsList.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin me-2"></i>Carregando suas sessões...</div>';
+
+        // Verificar se o usuário está logado
+        if (typeof window.firebaseAuth === 'undefined' || !window.firebaseAuth || !window.firebaseAuth.currentUser) {
+            console.log('Usuário não está logado, não é possível buscar eventos');
+            appointmentsList.innerHTML = `
+                <div class='alert alert-warning'>
+                    <i class='fas fa-exclamation-triangle me-2'></i>
+                    Você precisa fazer login para ver suas sessões agendadas.
+                    <div class="mt-3">
+                        <a href="area-do-paciente.html" class="btn btn-sm btn-warning">
+                            <i class="fas fa-sign-in-alt me-2"></i>Fazer Login
+                        </a>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        try {
+            // Buscar os agendamentos do usuário
+            const appointments = await fetchUserAppointments();
+            
+            if (appointments.length === 0) {
+                appointmentsList.innerHTML = `
+                    <div class='alert alert-info'>
+                        <i class='fas fa-info-circle me-2'></i>
+                        Você não tem sessões agendadas no momento.
+                        <div class="mt-3">
+                            <button onclick="openCalendlyScheduling()" class="btn btn-sm btn-primary">
+                                <i class="fas fa-calendar-plus me-2"></i>Agendar Sessão
+                            </button>
+                        </div>
+                    </div>`;
+                return;
+            }
+            
+            // Processar e exibir os eventos
+            let eventsHtml = `
+                <div class="list-group">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Suas Sessões Agendadas</h5>
+                        <button onclick="openCalendlyScheduling()" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-calendar-plus me-2"></i>Agendar Nova
+                        </button>
+                    </div>`;
+            
+            // Ordenar eventos por data (mais próximos primeiro)
+            const currentDate = new Date();
+            appointments.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+            
+            // Separar eventos futuros e passados
+            const futureAppointments = appointments.filter(a => new Date(a.start_time) >= currentDate);
+            const pastAppointments = appointments.filter(a => new Date(a.start_time) < currentDate);
+            
+            // Primeiro mostrar eventos futuros
+            if (futureAppointments.length > 0) {
+                eventsHtml += `<h6 class="mt-3 mb-2 text-primary">Próximas Sessões</h6>`;
+                
+                for (const event of futureAppointments) {
+                    const startTime = new Date(event.start_time);
+                    const endTime = new Date(event.end_time);
+                    
+                    const formattedDate = startTime.toLocaleDateString('pt-BR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                    });
+                    
+                    const formattedStartTime = startTime.toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    const formattedEndTime = endTime.toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    eventsHtml += `
+                        <div class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">${event.name}</h5>
+                                <small class="text-primary">Agendada</small>
+                            </div>
+                            <p class="mb-1">
+                                <i class="far fa-calendar-alt me-2"></i>${formattedDate}<br>
+                                <i class="far fa-clock me-2"></i>${formattedStartTime} - ${formattedEndTime}
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-map-marker-alt me-1"></i>${event.location}
+                                </small>
+                                <div>
+                                    <button onclick="setupNotification('${event.name}', '${event.start_time}')" class="btn btn-sm btn-notify">
+                                        <i class="fas fa-bell me-1"></i>Notifique-me
+                                    </button>
+                                    <a href="${event.cancellation_url}" target="_blank" class="btn btn-sm btn-outline-danger ms-2">
+                                        <i class="fas fa-times me-1"></i>Cancelar
+                                    </a>
+                                    <a href="${event.reschedule_url}" target="_blank" class="btn btn-sm btn-outline-secondary ms-2">
+                                        <i class="fas fa-sync-alt me-1"></i>Reagendar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>`;
+                }
+            }
+            
+            // Depois mostrar eventos passados
+            if (pastAppointments.length > 0) {
+                eventsHtml += `<h6 class="mt-4 mb-2 text-muted">Sessões Anteriores</h6>`;
+                
+                for (const event of pastAppointments) {
+                    const startTime = new Date(event.start_time);
+                    const endTime = new Date(event.end_time);
+                    
+                    const formattedDate = startTime.toLocaleDateString('pt-BR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                    });
+                    
+                    const formattedStartTime = startTime.toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    const formattedEndTime = endTime.toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    eventsHtml += `
+                        <div class="list-group-item list-group-item-action bg-light">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">${event.name}</h5>
+                                <small class="text-muted">Concluída</small>
+                            </div>
+                            <p class="mb-1">
+                                <i class="far fa-calendar-alt me-2"></i>${formattedDate}<br>
+                                <i class="far fa-clock me-2"></i>${formattedStartTime} - ${formattedEndTime}
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-map-marker-alt me-1"></i>${event.location}
+                                </small>
+                            </div>
+                        </div>`;
+                }
+            }
+            
+            eventsHtml += `</div>`;
+            appointmentsList.innerHTML = eventsHtml;
+            
+        } catch (error) {
+            console.error("Erro ao buscar eventos:", error);
+            appointmentsList.innerHTML = `
+                <div class='alert alert-danger'>
+                    <i class='fas fa-exclamation-circle me-2'></i>
+                    Erro ao buscar suas sessões: ${error.message}
+                    <div class="mt-3">
+                        <button class="btn btn-sm btn-outline-primary" onclick="displayUserEvents()">
+                            <i class="fas fa-sync-alt me-2"></i>Tentar Novamente
+                        </button>
+                    </div>
+                </div>`;
+        }
+    }
+
+    async function fetchUserEvents() {
+        console.log('Iniciando fetchUserEvents');
+        const appointmentsList = document.getElementById("appointmentsList");
+        if (!appointmentsList) {
+            console.error('Elemento appointmentsList não encontrado');
+            return;
+        }
+        
+        appointmentsList.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin me-2"></i>Carregando suas sessões...</div>';
+
+        // Verificar se o usuário está logado
+        if (typeof window.firebaseAuth === 'undefined' || !window.firebaseAuth || !window.firebaseAuth.currentUser) {
+            console.log('Usuário não está logado, não é possível buscar eventos');
+            appointmentsList.innerHTML = `
+                <div class='alert alert-warning'>
+                    <i class='fas fa-exclamation-triangle me-2'></i>
+                    Você precisa fazer login para ver suas sessões agendadas.
+                    <div class="mt-3">
+                        <a href="area-do-paciente.html" class="btn btn-sm btn-warning">
+                            <i class="fas fa-sign-in-alt me-2"></i>Fazer Login
+                        </a>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        // Atualiza as variáveis de token a partir do localStorage
+        calendlyAccessToken = localStorage.getItem("calendlyAccessToken") || null;
+        tokenExpiry = localStorage.getItem("calendlyTokenExpiry") || null;
+
+        if (!isTokenValid()) {
+            console.log("Token inválido ou expirado.");
+            appointmentsList.innerHTML = `
+                <div class='alert alert-info'>
+                    <i class='fas fa-info-circle me-2'></i>
+                    Conecte-se ao Calendly para visualizar suas sessões agendadas.
+                    <div class="mt-3">
+                        <button class="btn btn-primary" onclick="redirectToCalendlyAuth()">
+                            <i class="fas fa-calendar-alt me-2"></i>Conectar Agenda
+                        </button>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        try {
+            console.log("Iniciando busca de eventos agendados...");
+            
+            // Primeiro, obter o usuário atual do Calendly
+            const userRes = await fetch("https://api.calendly.com/users/me", {
+                headers: {
+                    "Authorization": `Bearer ${calendlyAccessToken}`,
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (!userRes.ok) {
+                if (userRes.status === 401) {
+                    console.log("Token expirado.");
+                    localStorage.removeItem("calendlyAccessToken");
+                    localStorage.removeItem("calendlyTokenExpiry");
+                    appointmentsList.innerHTML = `
+                        <div class='alert alert-info'>
+                            <i class='fas fa-info-circle me-2'></i>
+                            Sua conexão com o Calendly expirou.
+                            <div class="mt-3">
+                                <button class="btn btn-primary" onclick="redirectToCalendlyAuth()">
+                                    <i class="fas fa-calendar-alt me-2"></i>Reconectar Agenda
+                                </button>
+                            </div>
+                        </div>`;
+                    return;
+                }
+                throw new Error(`Erro ao buscar usuário: ${userRes.status}`);
+            }
+
+            const userData = await userRes.json();
+            console.log("Dados do usuário:", userData);
+            
+            // Agora, buscar os eventos agendados para este usuário
+            const currentDate = new Date();
+            const minDate = new Date(currentDate);
+            minDate.setDate(currentDate.getDate() - 7); // Eventos dos últimos 7 dias
+            
+            const maxDate = new Date(currentDate);
+            maxDate.setMonth(currentDate.getMonth() + 3); // Eventos dos próximos 3 meses
+            
+            const minTime = minDate.toISOString();
+            const maxTime = maxDate.toISOString();
+            
+            const userUri = userData.resource.uri;
+            const eventsUrl = new URL("https://api.calendly.com/scheduled_events");
+            eventsUrl.searchParams.append("user", userUri);
+            eventsUrl.searchParams.append("min_start_time", minTime);
+            eventsUrl.searchParams.append("max_start_time", maxTime);
+            eventsUrl.searchParams.append("status", "active");
+            
+            const eventsRes = await fetch(eventsUrl.toString(), {
+                headers: {
+                    "Authorization": `Bearer ${calendlyAccessToken}`,
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (!eventsRes.ok) {
+                console.error("Erro na resposta dos eventos:", eventsRes.status, eventsRes.statusText);
+                
+                if (eventsRes.status === 401) {
+                    console.log("Token expirado.");
+                    localStorage.removeItem("calendlyAccessToken");
+                    localStorage.removeItem("calendlyTokenExpiry");
+                    appointmentsList.innerHTML = `
+                        <div class='alert alert-info'>
+                            <i class='fas fa-info-circle me-2'></i>
+                            Sua conexão com o Calendly expirou.
+                            <div class="mt-3">
+                                <button class="btn btn-primary" onclick="redirectToCalendlyAuth()">
+                                    <i class="fas fa-calendar-alt me-2"></i>Reconectar Agenda
+                                </button>
+                            </div>
+                        </div>`;
+                    return;
+                }
+                throw new Error(`Erro ao buscar eventos: ${eventsRes.status}`);
+            }
+
+            const data = await eventsRes.json();
+            console.log("Eventos recebidos:", data);
+
+            appointmentsList.innerHTML = "";
+
+            if (!data.collection || !data.collection.length) {
+                appointmentsList.innerHTML = `
+                    <div class='alert alert-info'>
+                        <i class='fas fa-info-circle me-2'></i> 
+                        Você não tem sessões agendadas. 
+                        <a href="https://calendly.com/psicologakeremkesia/30min?month=2025-04" target="_blank" class="btn btn-sm btn-primary ms-2">
+                            <i class="fas fa-calendar-plus me-2"></i> Agendar Agora
+                        </a>
+                    </div>`;
+                return;
+            }
+
+            // Ordenar eventos por data (do mais próximo para o mais distante)
+            const sortedEvents = data.collection.sort((a, b) => {
+                return new Date(a.start_time) - new Date(b.start_time);
+            });
+
+            appointmentsList.innerHTML += `<div class='alert alert-primary'><strong>Você tem ${sortedEvents.length} sessões agendadas:</strong></div>`;
+
+            sortedEvents.forEach(event => {
+                const date = new Date(event.start_time);
+                const endDate = new Date(event.end_time);
+                const dia = date.toLocaleDateString("pt-BR");
+                const horaInicio = date.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+                const horaFim = endDate.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+                const duracao = (endDate - date) / (1000 * 60); // Duração em minutos
+
+                // Verificar se o evento é hoje
+                const isToday = date.toDateString() === new Date().toDateString();
+                const isPast = date < new Date();
+                
+                // Definir classe de alerta com base na data
+                let alertClass = "alert-success";
+                if (isToday) alertClass = "alert-warning";
+                if (isPast) alertClass = "alert-secondary";
+
+                const div = document.createElement("div");
+                div.className = `alert ${alertClass} d-flex justify-content-between align-items-center mb-2`;
+                div.innerHTML = `
+                    <div>
+                        <i class='fas fa-calendar-check me-2'></i> 
+                        <strong>${isToday ? "HOJE" : dia}</strong> - ${horaInicio} às ${horaFim}
+                        <div class="small text-muted">Duração: ${duracao} minutos</div>
+                    </div>
+                    <div>
+                        ${!isPast ? `
+                        <button onclick="setupNotification('${event.name || 'Sessão'}', '${event.start_time}')" class="btn btn-sm btn-notify me-2">
+                            <i class="fas fa-bell me-1"></i>Notifique-me
+                        </button>
+                        ` : ''}
+                        <a href="${event.uri}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-external-link-alt me-2"></i>Detalhes
+                        </a>
+                    </div>`;
+                appointmentsList.appendChild(div);
+            });
+            
+            // Adicionar informação sobre como cancelar
+            const infoDiv = document.createElement("div");
+            infoDiv.className = "alert alert-light mt-3 small";
+            infoDiv.innerHTML = `
+                <i class="fas fa-info-circle me-2"></i>
+                Para cancelar ou reagendar uma sessão, clique em "Detalhes" e use as opções disponíveis no Calendly.`;
+            appointmentsList.appendChild(infoDiv);
+            
+        } catch (err) {
+            console.error("Erro ao carregar eventos:", err);
+            appointmentsList.innerHTML = `
+                <div class='alert alert-info'>
+                    <i class='fas fa-info-circle me-2'></i>
+                    Não foi possível carregar suas sessões agendadas.
+                    <div class="mt-3">
+                        <button class="btn btn-sm btn-primary" onclick="displayUserEvents()">
+                            <i class="fas fa-sync-alt me-2"></i>Tentar Novamente
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="redirectToCalendlyAuth()">
+                            <i class="fas fa-calendar-alt me-2"></i>Reconectar Agenda
+                        </button>
+                    </div>
+                </div>`;
+        }
+    }
+
+    // Initialize Firebase and handle authentication
+    let firebaseInitialized = false;
+    let authInitialized = false;
+
+    function showError(message) {
+      // Esconder o overlay de carregamento
+      document.getElementById('loadingOverlay').style.display = 'none';
+      
+      // Mostrar o conteúdo principal
+      document.getElementById('mainContent').style.display = 'block';
+      
+      // Exibir o erro apenas no painel de sessões
+      const appointmentsList = document.getElementById('appointmentsList');
+      if (appointmentsList) {
+        appointmentsList.innerHTML = `
+          <div class='alert alert-warning'>
+            <i class='fas fa-exclamation-triangle me-2'></i>
+            ${message}
+            <div class="mt-3">
+              <button class="btn btn-sm btn-warning" onclick="displayUserEvents()">
+                <i class="fas fa-sync-alt me-2"></i>Tentar Novamente
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      
+      console.error('Erro:', message);
+    }
+
+    function initializeFirebase() {
+      return new Promise((resolve, reject) => {
+        if (firebaseInitialized) {
+          resolve();
+          return;
+        }
+
+        try {
+          if (!window.firebase) {
+            reject(new Error('Firebase não está disponível'));
+                    return;
+                }
+
+          // Initialize Firebase Auth
+          window.firebaseAuth = window.firebase.auth();
+          firebaseInitialized = true;
+          resolve();
+        } catch (error) {
+          console.error('Erro ao inicializar Firebase:', error);
+          reject(error);
+        }
+      });
+    }
+
+    function waitForAuth() {
+      return new Promise((resolve, reject) => {
+        if (!window.firebaseAuth) {
+          reject(new Error('Firebase Auth não está inicializado'));
+          return;
+        }
+
+        const unsubscribe = window.firebaseAuth.onAuthStateChanged(user => {
+          unsubscribe(); // Stop listening for auth changes
+          authInitialized = true;
+          resolve(user);
+        }, error => {
+          console.error('Erro na autenticação:', error);
+          reject(error);
+        });
+
+        // Set a timeout in case auth takes too long
+        setTimeout(() => {
+          if (!authInitialized) {
+            unsubscribe();
+            reject(new Error('Timeout na autenticação'));
+          }
+        }, 10000); // 10 second timeout
+      });
+    }
+
+    async function initializeDashboard() {
+      try {
+        // Initialize Firebase
+        await initializeFirebase();
+        console.log('Firebase inicializado com sucesso');
+
+        // Wait for auth state
+        const user = await waitForAuth();
+        console.log('Estado de autenticação verificado:', user ? 'Usuário autenticado' : 'Não autenticado');
+
+        // Update welcome message
+        const welcomeName = document.getElementById('welcomeName');
+        
+        if (!user) {
+          console.log('Usuário não autenticado, usando modo offline');
+          // Mostrar mensagem de modo offline
+          welcomeName.textContent = 'Visitante (Modo Offline)';
+          welcomeName.style.color = '#ffc107';
+          
+          // Adicionar aviso de modo offline
+          const dashboardHeader = document.querySelector('.dashboard-header');
+          if (dashboardHeader) {
+            const offlineAlert = document.createElement('div');
+            offlineAlert.className = 'alert alert-warning mt-3';
+            offlineAlert.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Você está no modo offline. Seus dados serão salvos localmente. <a href="area-do-paciente.html" class="alert-link">Faça login</a> para sincronizar seus dados.';
+            dashboardHeader.appendChild(offlineAlert);
+          }
+          
+          // Mostrar mensagem no painel de sessões
+          const appointmentsList = document.getElementById('appointmentsList');
+          if (appointmentsList) {
+            appointmentsList.innerHTML = `
+              <div class='alert alert-warning'>
+                <i class='fas fa-exclamation-triangle me-2'></i>
+                Você precisa fazer login para ver suas sessões agendadas.
+                <div class="mt-3">
+                  <a href="area-do-paciente.html" class="btn btn-sm btn-warning">
+                    <i class="fas fa-sign-in-alt me-2"></i>Fazer Login
+                  </a>
+                </div>
+              </div>
+            `;
+          }
+        } else {
+          // Se o usuário estiver logado, atualizar a mensagem de boas-vindas
+          let nameToShow = '';
+          
+          // Tentar obter o nome do localStorage primeiro (dados mais completos)
+          try {
+            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+            if (userData.firstName) {
+              nameToShow = userData.firstName;
+            }
+          } catch (e) {
+            console.error('Erro ao ler dados do usuário do localStorage:', e);
+          }
+          
+          // Se não encontrou no localStorage, usar dados do Firebase Auth
+          if (!nameToShow) {
+            nameToShow = user.displayName || user.email?.split('@')[0] || 'Paciente';
+          }
+          
+          // Format name
+          nameToShow = nameToShow
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+  
+          welcomeName.textContent = nameToShow;
+          // Manter a cor blueberry milk definida no HTML
+  
+          // Add logout button if not already present
+          if (!document.querySelector('.btn-outline-danger')) {
+            const logoutButton = document.createElement('button');
+            logoutButton.className = 'btn btn-outline-danger ms-3';
+            logoutButton.innerHTML = '<i class="fas fa-sign-out-alt me-2"></i>Sair';
+            logoutButton.onclick = async () => {
+              try {
+                // Sincronizar dados antes de sair
+                if (window.syncTestResults && window.syncSessionData) {
+                  await window.syncTestResults();
+                  await window.syncSessionData();
+                }
+                
+                localStorage.removeItem('calendlyAccessToken');
+                localStorage.removeItem('calendlyTokenExpiry');
+                
+                window.firebaseAuth.signOut().then(() => {
+                  window.location.href = 'area-do-paciente.html';
+                });
+              } catch (error) {
+                console.error('Erro ao fazer logout:', error);
+                window.firebaseAuth.signOut().then(() => {
+                  window.location.href = 'area-do-paciente.html';
+                });
+              }
+            };
+            welcomeName.parentNode.appendChild(logoutButton);
+          }
+        }
+
+        // Show main content and hide loading overlay
+        document.getElementById('loadingOverlay').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+
+        // Sincronizar com Firestore
+        if (user) {
+          try {
+            // Carregar testes do Firestore
+            await window.loadTestsFromFirestore();
+            
+            // Sincronizar testes locais com Firestore
+            await window.syncTestResults();
+            
+            // Registrar sessão
+            await window.syncSessionData();
+          } catch (error) {
+            console.error('Erro ao sincronizar com Firestore:', error);
+          }
+        }
+        
+        // Initialize features
+        updateCharts();
+        displayUserEvents(); // Usar a nova função para exibir eventos
+        loadTestResults();
+
+      } catch (error) {
+        console.error('Erro ao inicializar dashboard:', error);
+        
+        // Esconder o overlay de carregamento
+        document.getElementById('loadingOverlay').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+        
+        // Mostrar erro apenas no painel de sessões
+        const appointmentsList = document.getElementById('appointmentsList');
+        if (appointmentsList) {
+          appointmentsList.innerHTML = `
+            <div class='alert alert-warning'>
+              <i class='fas fa-exclamation-triangle me-2'></i>
+              Não foi possível carregar suas sessões. Por favor, tente novamente mais tarde.
+              <div class="mt-3">
+                <button class="btn btn-sm btn-warning" onclick="displayUserEvents()">
+                  <i class="fas fa-sync-alt me-2"></i>Tentar Novamente
+                </button>
+              </div>
+            </div>
+          `;
+        }
+        
+        // Inicializar outras partes do dashboard que não dependem do Calendly
+        updateCharts();
+      }
+    }
+
+    // Start initialization when the page loads
+    document.addEventListener('DOMContentLoaded', initializeDashboard);
+
+    // Daily Tracker Variables
+    let moodChart = null;
+    let moodDistributionChart = null;
+    let sentimentSumChart = null;
+
+    // A função saveDailyEntry foi movida para o início do arquivo
+    
+    // Função auxiliar para mostrar mensagens de status
+    function showStatusMessage(type, message) {
+        const statusDiv = document.getElementById('dailyTrackerStatus') || document.createElement('div');
+        statusDiv.id = 'dailyTrackerStatus';
+        
+        // Definir classe e ícone com base no tipo
+        let className, icon;
+        switch (type) {
+            case 'success':
+                className = 'alert-success';
+                icon = 'check-circle';
+                break;
+            case 'warning':
+                className = 'alert-warning';
+                icon = 'exclamation-triangle';
+                break;
+            case 'error':
+                className = 'alert-danger';
+                icon = 'exclamation-circle';
+                break;
+            default:
+                className = 'alert-info';
+                icon = 'info-circle';
+        }
+        
+        statusDiv.className = `alert ${className} mt-2`;
+        statusDiv.innerHTML = `<i class="fas fa-${icon} me-2"></i>${message}`;
+        
+        const form = document.getElementById('dailyTrackerForm');
+        if (form) {
+            form.appendChild(statusDiv);
+            
+            // Limpar após 3 segundos
+            setTimeout(() => {
+                statusDiv.remove();
+            }, 3000);
+        } else {
+            console.error('Elemento dailyTrackerForm não encontrado');
+        }
+    }
+    
+    // As funções saveEntryToLocalStorage e clearLocalEntries foram movidas para o início do arquivo
+
+    function updateCharts() {
+        console.log('Função updateCharts iniciada');
+        
+        try {
+            // Forçar a limpeza dos gráficos existentes
+            if (moodChart) {
+                moodChart.destroy();
+                moodChart = null;
+            }
+            
+            if (moodDistributionChart) {
+                moodDistributionChart.destroy();
+                moodDistributionChart = null;
+            }
+            
+            if (sentimentSumChart) {
+                sentimentSumChart.destroy();
+                sentimentSumChart = null;
+            }
+            
+            // Obter entradas do localStorage
+            let localEntries = [];
+            try {
+                const storedEntries = localStorage.getItem('moodEntries');
+                console.log('Entradas obtidas do localStorage (raw):', storedEntries);
+                
+                if (!storedEntries) {
+                    console.log('Nenhuma entrada encontrada no localStorage');
+                    // Criar gráficos vazios
+                    updateMoodChart([]);
+                    updateDistributionChart([]);
+                    updateSentimentSumChart([]);
+                    return;
+                }
+                
+                localEntries = JSON.parse(storedEntries);
+                console.log('Entradas obtidas do localStorage (parsed):', localEntries);
+            } catch (error) {
+                console.error('Erro ao obter entradas do localStorage:', error);
+                localEntries = [];
+            }
+            
+            if (!Array.isArray(localEntries)) {
+                console.error('Entradas do localStorage não são um array:', localEntries);
+                localEntries = [];
+                // Criar gráficos vazios
+                updateMoodChart([]);
+                updateDistributionChart([]);
+                updateSentimentSumChart([]);
+                return;
+            }
+            
+            if (localEntries.length === 0) {
+                console.log('Array de entradas está vazio');
+                // Criar gráficos vazios
+                updateMoodChart([]);
+                updateDistributionChart([]);
+                updateSentimentSumChart([]);
+                return;
+            }
+            
+            // Converter datas para objetos Date
+            localEntries = localEntries.map(entry => {
+                try {
+                    return {
+                        date: new Date(entry.date),
+                        mood: entry.mood,
+                        note: entry.note || ''
+                    };
+                } catch (e) {
+                    console.error('Erro ao processar entrada:', entry, e);
+                    return null;
+                }
+            }).filter(entry => entry !== null);
+            
+            console.log('Entradas processadas:', localEntries);
+            
+            // Processar entradas locais imediatamente
+            // Sort entries by date
+            localEntries.sort((a, b) => a.date - b.date);
+            
+            // Get last 7 days
+            const last7Days = localEntries.slice(-7);
+            console.log('Últimos 7 dias de entradas:', last7Days);
+            
+            // Update mood chart
+            updateMoodChart(last7Days);
+            
+            // Update distribution chart
+            updateDistributionChart(localEntries);
+            
+            // Update sentiment sum chart
+            updateSentimentSumChart(last7Days);
+            
+            // Verificar se o Firebase está disponível e o usuário está logado
+            // para sincronizar dados, mas não esperar por isso para mostrar os gráficos
+            if (typeof window.firebaseAuth !== 'undefined' && window.firebaseAuth && window.firebaseAuth.currentUser) {
+                const user = window.firebaseAuth.currentUser;
+                console.log('Usuário logado, obtendo entradas do Firebase para sincronização');
+                
+                try {
+                    const db = window.firebase.database();
+                    db.ref('dailyEntries/' + user.uid).once('value').then(snapshot => {
+                        const firebaseEntries = [];
+                        snapshot.forEach(childSnapshot => {
+                            try {
+                                firebaseEntries.push({
+                                    date: new Date(childSnapshot.val().date),
+                                    mood: childSnapshot.val().mood,
+                                    note: childSnapshot.val().note || ''
+                                });
+                            } catch (e) {
+                                console.error('Erro ao processar entrada do Firebase:', childSnapshot.val(), e);
+                            }
+                        });
+                        
+                        console.log('Entradas obtidas do Firebase:', firebaseEntries);
+                        
+                        if (firebaseEntries.length === 0) {
+                            console.log('Nenhuma entrada encontrada no Firebase');
+                            return;
+                        }
+                        
+                        // Combinar entradas locais e do Firebase
+                        let allEntries = [...localEntries, ...firebaseEntries];
+                        console.log('Entradas combinadas:', allEntries);
+                        
+                        // Remover duplicatas (baseado na data)
+                        const uniqueDates = {};
+                        allEntries = allEntries.filter(entry => {
+                            try {
+                                const dateStr = entry.date.toISOString().split('T')[0];
+                                if (uniqueDates[dateStr]) return false;
+                                uniqueDates[dateStr] = true;
+                                return true;
+                            } catch (e) {
+                                console.error('Erro ao processar data da entrada:', entry, e);
+                                return false;
+                            }
+                        });
+                        
+                        console.log('Entradas após remoção de duplicatas:', allEntries);
+                        
+                        // Sort entries by date
+                        allEntries.sort((a, b) => a.date - b.date);
+                        
+                        // Get last 7 days
+                        const last7Days = allEntries.slice(-7);
+                        console.log('Últimos 7 dias de entradas (com Firebase):', last7Days);
+                        
+                        // Update mood chart
+                        updateMoodChart(last7Days);
+                        
+                        // Update distribution chart
+                        updateDistributionChart(allEntries);
+                        
+                        // Update sentiment sum chart
+                        updateSentimentSumChart(last7Days);
+                    }).catch(error => {
+                        console.error('Erro ao obter entradas do Firebase:', error);
+                    });
+                } catch (error) {
+                    console.error('Erro ao acessar o Firebase:', error);
+                }
+            } else {
+                console.log('Usuário não logado ou Firebase não disponível, usando apenas entradas locais');
+            }
+        } catch (error) {
+            console.error('Erro geral em updateCharts:', error);
+        }
+    }
+
+    function updateMoodChart(entries) {
+        console.log('Iniciando updateMoodChart com entradas:', entries);
+        
+        const ctx = document.getElementById('moodChart');
+        if (!ctx) {
+            console.error('Elemento moodChart não encontrado!');
+            return;
+        }
+        
+        const context2d = ctx.getContext('2d');
+        if (!context2d) {
+            console.error('Não foi possível obter o contexto 2D do canvas');
+            return;
+        }
+        
+        if (moodChart) {
+            console.log('Destruindo gráfico anterior');
+            moodChart.destroy();
+        }
+        
+        // Verificar se há entradas
+        if (!entries || entries.length === 0) {
+            console.log('Nenhuma entrada para mostrar no gráfico de humor');
+            
+            // Criar um gráfico vazio com mensagem
+            moodChart = new Chart(context2d, {
+                type: 'bar',
+                data: {
+                    labels: ['Sem dados'],
+                    datasets: [{
+                        label: 'Humor',
+                        data: [0],
+                        backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                        borderColor: 'rgba(200, 200, 200, 0.5)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Sem dados de humor para mostrar',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            display: false
+                        },
+                        x: {
+                            display: false
+                        }
+                    }
+                }
+            });
+            return;
+        }
+        
+        // Converter valores de humor para a nova escala
+        // 1 (Muito triste) = -2, 2 (Triste) = -1, 3 (Normal) = 0, 4 (Bom) = 1, 5 (Excelente) = 2
+        const convertedEntries = entries.map(entry => {
+            return {
+                ...entry,
+                convertedMood: entry.mood - 3 // Converter para escala -2 a 2
+            };
+        });
+        
+        // Criar tooltips personalizados com as observações
+        const tooltips = convertedEntries.map(entry => {
+            const moodLabels = {
+                '-2': 'Muito triste',
+                '-1': 'Triste',
+                '0': 'Normal',
+                '1': 'Bom',
+                '2': 'Excelente'
+            };
+            
+            return `${entry.date.toLocaleDateString('pt-BR')}
+Humor: ${moodLabels[entry.convertedMood]}
+Observação: ${entry.note || 'Nenhuma observação'}`;
+        });
+
+        moodChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: convertedEntries.map(entry => entry.date.toLocaleDateString('pt-BR')),
+                datasets: [{
+                    label: 'Humor',
+                    data: convertedEntries.map(entry => entry.convertedMood),
+                    borderColor: '#6c63ff',
+                    backgroundColor: 'rgba(108, 99, 255, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: convertedEntries.map(entry => {
+                        // Cores diferentes para cada nível de humor
+                        const colors = {
+                            '-2': '#dc3545', // Vermelho para muito triste
+                            '-1': '#ffc107', // Amarelo para triste
+                            '0': '#6c757d',  // Cinza para normal
+                            '1': '#28a745',  // Verde para bom
+                            '2': '#6c63ff'   // Roxo para excelente
+                        };
+                        return colors[entry.convertedMood];
+                    }),
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        min: -2,
+                        max: 2,
+                        ticks: {
+                            stepSize: 1,
+                            callback: function(value) {
+                                const labels = {
+                                    '-2': 'Muito triste',
+                                    '-1': 'Triste',
+                                    '0': 'Normal',
+                                    '1': 'Bom',
+                                    '2': 'Excelente'
+                                };
+                                return labels[value];
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return tooltips[context.dataIndex];
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Seu humor nos últimos 7 dias',
+                        font: {
+                            size: 16
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    intersect: false
+                }
+            }
+        });
+    }
+
+    function updateDistributionChart(entries) {
+        console.log('Iniciando updateDistributionChart com entradas:', entries);
+        
+        const ctx = document.getElementById('moodDistributionChart');
+        if (!ctx) {
+            console.error('Elemento moodDistributionChart não encontrado!');
+            return;
+        }
+        
+        const context2d = ctx.getContext('2d');
+        if (!context2d) {
+            console.error('Não foi possível obter o contexto 2D do canvas');
+            return;
+        }
+        
+        if (moodDistributionChart) {
+            console.log('Destruindo gráfico anterior');
+            moodDistributionChart.destroy();
+        }
+        
+        // Verificar se há entradas
+        if (!entries || entries.length === 0) {
+            console.log('Nenhuma entrada para mostrar no gráfico de distribuição');
+            
+            // Remover texto de total de entradas se existir
+            const totalEntriesText = document.getElementById('totalEntriesText');
+            if (totalEntriesText) {
+                totalEntriesText.remove();
+            }
+            
+            // Criar um gráfico vazio com mensagem
+            moodDistributionChart = new Chart(context2d, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sem dados'],
+                    datasets: [{
+                        data: [1],
+                        backgroundColor: ['rgba(200, 200, 200, 0.2)'],
+                        borderColor: ['rgba(200, 200, 200, 0.5)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Sem dados de humor para mostrar',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+            return;
+        }
+
+        // Converter valores de humor para a nova escala
+        // 1 (Muito triste) = -2, 2 (Triste) = -1, 3 (Normal) = 0, 4 (Bom) = 1, 5 (Excelente) = 2
+        const convertedEntries = entries.map(entry => {
+            return {
+                ...entry,
+                convertedMood: entry.mood - 3 // Converter para escala -2 a 2
+            };
+        });
+        
+        // Count mood occurrences
+        const moodCounts = {
+            '-2': 0, '-1': 0, '0': 0, '1': 0, '2': 0
+        };
+        convertedEntries.forEach(entry => {
+            moodCounts[entry.convertedMood]++;
+        });
+        
+        // Preparar dados para o gráfico
+        const labels = ['Muito Triste (-2)', 'Triste (-1)', 'Normal (0)', 'Bom (+1)', 'Excelente (+2)'];
+        const data = [moodCounts['-2'], moodCounts['-1'], moodCounts['0'], moodCounts['1'], moodCounts['2']];
+        const backgroundColor = ['#dc3545', '#ffc107', '#6c757d', '#28a745', '#6c63ff'];
+        
+        // Calcular porcentagens
+        const total = data.reduce((sum, value) => sum + value, 0);
+        const percentages = data.map(value => total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%');
+        
+        // Criar tooltips personalizados
+        const tooltips = labels.map((label, index) => {
+            return `${label}: ${data[index]} entradas (${percentages[index]})`;
+        });
+
+        moodDistributionChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColor,
+                    borderWidth: 1,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return tooltips[context.dataIndex];
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Distribuição de Humor',
+                        font: {
+                            size: 16
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+        
+        // Adicionar texto no centro do gráfico com o total de entradas
+        if (total > 0) {
+            const totalEntriesText = document.getElementById('totalEntriesText');
+            if (totalEntriesText) {
+                totalEntriesText.textContent = `Total: ${total} entradas`;
+            } else {
+                const textDiv = document.createElement('div');
+                textDiv.id = 'totalEntriesText';
+                textDiv.style.position = 'absolute';
+                textDiv.style.top = '50%';
+                textDiv.style.left = '50%';
+                textDiv.style.transform = 'translate(-50%, -50%)';
+                textDiv.style.textAlign = 'center';
+                textDiv.style.fontSize = '14px';
+                textDiv.style.fontWeight = 'bold';
+                textDiv.textContent = `Total: ${total} entradas`;
+                
+                const chartContainer = document.getElementById('moodDistributionChart').parentNode;
+                chartContainer.style.position = 'relative';
+                chartContainer.appendChild(textDiv);
+            }
+        }
+    }
+    
+    // Update Sentiment Sum Chart
+    function updateSentimentSumChart(entries) {
+        console.log('Iniciando updateSentimentSumChart com entradas:', entries);
+        
+        // Se não foram fornecidas entradas, obter as últimas 7 entradas do localStorage
+        if (!entries || !Array.isArray(entries)) {
+            console.log('Nenhuma entrada fornecida, obtendo do localStorage...');
+            try {
+                const storedEntries = localStorage.getItem('moodEntries');
+                if (storedEntries) {
+                    const allEntries = JSON.parse(storedEntries);
+                    if (Array.isArray(allEntries) && allEntries.length > 0) {
+                        // Pegar as últimas 7 entradas
+                        entries = allEntries.slice(-7);
+                        console.log('Obtidas', entries.length, 'entradas do localStorage');
+                        
+                        // Mostrar toast informando que o gráfico foi atualizado
+                        showToast('Gráfico de sentimentos atualizado!', 'success');
+                    } else {
+                        entries = [];
+                        console.log('Nenhuma entrada válida encontrada no localStorage');
+                    }
+                } else {
+                    entries = [];
+                    console.log('Nenhuma entrada encontrada no localStorage');
+                }
+            } catch (e) {
+                console.error('Erro ao obter entradas do localStorage:', e);
+                entries = [];
+            }
+        }
+        
+        const ctx = document.getElementById('sentimentSumChart');
+        if (!ctx) {
+            console.error('Elemento sentimentSumChart não encontrado!');
+            return;
+        }
+        
+        // Destruir gráfico anterior se existir
+        if (sentimentSumChart) {
+            console.log('Destruindo gráfico de soma de sentimentos anterior');
+            sentimentSumChart.destroy();
+        }
+        
+        // Se não houver entradas, mostrar gráfico vazio com mensagem
+        if (entries.length === 0) {
+            const context2d = ctx.getContext('2d');
+            
+            // Criar um gráfico vazio com mensagem
+            sentimentSumChart = new Chart(context2d, {
+                type: 'bar',
+                data: {
+                    labels: ['Sem dados'],
+                    datasets: [{
+                        label: 'Sem dados disponíveis',
+                        data: [0],
+                        backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                        borderColor: 'rgba(200, 200, 200, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function() {
+                                    return 'Sem dados disponíveis';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                display: false
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            return;
+        }
+        
+        // Processar dados para o gráfico
+        // 1. Converter valores de humor para escala de sentimento (-2 a +2)
+        // 2. Agrupar por dia e somar os valores
+        
+        // Função para converter valor de humor (1-5) para sentimento (-2 a +2)
+        const convertToSentiment = (moodValue) => {
+            return moodValue - 3; // 5->+2, 4->+1, 3->0, 2->-1, 1->-2
+        };
+        
+        // Agrupar entradas por dia e calcular a soma dos sentimentos
+        const dailySentiments = {};
+        
+        entries.forEach(entry => {
+            try {
+                const date = new Date(entry.date);
+                const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+                
+                const sentiment = convertToSentiment(parseInt(entry.mood));
+                
+                if (!dailySentiments[dateStr]) {
+                    dailySentiments[dateStr] = {
+                        date: dateStr,
+                        sum: 0,
+                        count: 0
+                    };
+                }
+                
+                dailySentiments[dateStr].sum += sentiment;
+                dailySentiments[dateStr].count += 1;
+            } catch (e) {
+                console.error('Erro ao processar entrada para soma de sentimentos:', e, entry);
+            }
+        });
+        
+        // Converter para array e ordenar por data
+        let dailySentimentArray = Object.values(dailySentiments).sort((a, b) => {
+            return new Date(a.date) - new Date(b.date);
+        });
+        
+        console.log('Dados de sentimentos diários processados:', dailySentimentArray);
+        
+        // Preparar dados para o gráfico
+        const labels = dailySentimentArray.map(day => {
+            const date = new Date(day.date);
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        });
+        
+        const data = dailySentimentArray.map(day => day.sum);
+        
+        // Cores baseadas no valor do sentimento (vermelho para negativo, verde para positivo)
+        const backgroundColors = data.map(value => {
+            if (value > 0) return 'rgba(40, 167, 69, 0.2)';
+            if (value < 0) return 'rgba(220, 53, 69, 0.2)';
+            return 'rgba(108, 117, 125, 0.2)';
+        });
+        
+        const borderColors = data.map(value => {
+            if (value > 0) return 'rgba(40, 167, 69, 1)';
+            if (value < 0) return 'rgba(220, 53, 69, 1)';
+            return 'rgba(108, 117, 125, 1)';
+        });
+        
+        // Criar o gráfico
+        sentimentSumChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Soma de Sentimentos',
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const index = tooltipItems[0].dataIndex;
+                                return 'Data: ' + dailySentimentArray[index].date;
+                            },
+                            label: function(context) {
+                                const index = context.dataIndex;
+                                const value = data[index];
+                                const count = dailySentimentArray[index].count;
+                                
+                                let sentiment = 'Neutro';
+                                if (value > 0) sentiment = 'Positivo';
+                                if (value < 0) sentiment = 'Negativo';
+                                
+                                return [
+                                    `Soma: ${value} (${sentiment})`,
+                                    `Entradas: ${count}`
+                                ];
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Soma de Sentimentos Diários',
+                        font: {
+                            size: 16
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        suggestedMin: -6,
+                        suggestedMax: 6,
+                        ticks: {
+                            stepSize: 1
+                        },
+                        grid: {
+                            color: function(context) {
+                                if (context.tick.value === 0) {
+                                    return 'rgba(0, 0, 0, 0.2)';
+                                }
+                                return 'rgba(0, 0, 0, 0.1)';
+                            },
+                            lineWidth: function(context) {
+                                if (context.tick.value === 0) {
+                                    return 2;
+                                }
+                                return 1;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // A função showHistory foi substituída por uma versão melhorada no início do arquivo
+    function _unused_showHistory() {
+        // Esta função não é mais usada
+        let localEntries = JSON.parse(localStorage.getItem('moodEntries') || '[]');
+        localEntries = localEntries.map(entry => ({
+            date: new Date(entry.date),
+            mood: entry.mood,
+            note: entry.note,
+            source: 'local'
+        }));
+        
+        // Também obter entradas do Firebase se o usuário estiver logado
+        const user = window.firebaseAuth.currentUser;
+        let allEntries = [...localEntries];
+        
+        const displayEntries = (entries) => {
+            // Sort entries by date (newest first)
+            entries.sort((a, b) => b.date - a.date);
+
+            if (entries.length === 0) {
+                document.getElementById('historyEntries').innerHTML = '<div class="alert alert-info">Nenhuma entrada encontrada.</div>';
+                new bootstrap.Modal(document.getElementById('historyModal')).show();
+                return;
+            }
+
+            // Converter para a nova escala e preparar HTML
+            const historyHtml = entries.map(entry => {
+                // Converter para a nova escala
+                const convertedMood = entry.mood - 3; // -2 a 2
+                
+                // Definir ícone de fonte
+                const sourceIcon = entry.source === 'local' ? 
+                    '<i class="fas fa-laptop me-1" title="Armazenado localmente"></i>' : 
+                    '<i class="fas fa-cloud me-1" title="Armazenado na nuvem"></i>';
+                
+                // Obter texto do humor na nova escala
+                const moodTexts = ['Muito Triste (-2)', 'Triste (-1)', 'Normal (0)', 'Bom (+1)', 'Excelente (+2)'];
+                const moodText = moodTexts[entry.mood - 1];
+                
+                return `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">${sourceIcon} ${entry.date.toLocaleDateString('pt-BR')} ${entry.date.toLocaleTimeString('pt-BR')}</h6>
+                                <span class="badge bg-${getMoodBadgeColor(entry.mood)}" title="${moodText}">
+                                    ${getMoodEmoji(entry.mood)} ${convertedMood}
+                                </span>
+                            </div>
+                            <p class="mt-2 mb-0">${entry.note || 'Sem observações'}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('historyEntries').innerHTML = historyHtml;
+            new bootstrap.Modal(document.getElementById('historyModal')).show();
+        };
+        
+        if (user) {
+            const db = window.firebase.database();
+            db.ref('dailyEntries/' + user.uid).once('value').then(snapshot => {
+                const firebaseEntries = [];
+                snapshot.forEach(childSnapshot => {
+                    firebaseEntries.push({
+                        date: new Date(childSnapshot.val().date),
+                        mood: childSnapshot.val().mood,
+                        note: childSnapshot.val().note,
+                        source: 'firebase'
+                    });
+                });
+                
+                // Combinar entradas locais e do Firebase
+                allEntries = [...localEntries, ...firebaseEntries];
+                
+                // Remover duplicatas (baseado na data)
+                const uniqueDates = {};
+                allEntries = allEntries.filter(entry => {
+                    const dateStr = entry.date.toISOString().split('T')[0] + entry.date.toISOString().split('T')[1].substring(0, 5);
+                    if (uniqueDates[dateStr]) return false;
+                    uniqueDates[dateStr] = true;
+                    return true;
+                });
+                
+                displayEntries(allEntries);
+            }).catch(error => {
+                console.error('Erro ao obter histórico do Firebase:', error);
+                displayEntries(localEntries);
+            });
+        } else {
+            displayEntries(localEntries);
+        }
+    }
+
+    function getMoodEmoji(mood) {
+        const emojis = ['😢', '😔', '😐', '🙂', '😊'];
+        return emojis[mood - 1];
+    }
+
+    function getMoodBadgeColor(mood) {
+        const colors = ['danger', 'warning', 'secondary', 'success', 'primary'];
+        return colors[mood - 1];
+    }
+
+    // Initialize charts when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM carregado, inicializando gráficos...');
+        
+        // Inicializar todos os gráficos
+        updateCharts();
+        
+        // Adicionar event listener para o botão de atualização do gráfico de sentimentos
+        const btnUpdateSentiment = document.querySelector('button[onclick="updateSentimentSumChart()"]');
+        if (btnUpdateSentiment) {
+            console.log('Botão de atualização do gráfico de sentimentos encontrado');
+            btnUpdateSentiment.addEventListener('click', function() {
+                console.log('Botão de atualização do gráfico de sentimentos clicado');
+                showToast('Atualizando gráfico de sentimentos...', 'info');
+            });
+        }
+    });
+
+    // Memory Game Variables
+    let memoryCards = [];
+    let flippedCards = [];
+    let matchedPairs = 0;
+    let gameStarted = false;
+    let gameTimer = null;
+    let seconds = 0;
+
+    function startMemoryGame() {
+        const modal = new bootstrap.Modal(document.getElementById('gameModal'));
+        document.getElementById('gameModalTitle').textContent = 'Jogo de Memória';
+        document.getElementById('gameContainer').innerHTML = `
+            <div class="memory-game-container">
+                <div class="memory-game-board" id="memoryGameBoard"></div>
+                <div class="memory-game-stats">
+                    <div class="row">
+                        <div class="col">
+                            <h5>Pares Encontrados: <span id="matchedPairs">0/6</span></h5>
+                        </div>
+                        <div class="col">
+                            <h5>Tempo: <span id="memoryGameTimer">00:00</span></h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        modal.show();
+        initializeMemoryGame();
+    }
+
+    function initializeMemoryGame() {
+        const cardPairs = ['😊', '😊', '😢', '😢', '😡', '😡', '😴', '😴', '😎', '😎', '🤔', '🤔'];
+        memoryCards = shuffleArray([...cardPairs]);
+        const gameBoard = document.getElementById('memoryGameBoard');
+        gameBoard.innerHTML = '';
+        
+        for (let i = 0; i < 12; i++) {
+            const card = document.createElement('div');
+            card.className = 'memory-card';
+            card.dataset.value = memoryCards[i];
+            
+            card.innerHTML = `
+                <div class="card-inner">
+                    <div class="card-front">?</div>
+                    <div class="card-back">${memoryCards[i]}</div>
+                </div>
+            `;
+            
+            card.addEventListener('click', () => flipCard(card));
+            gameBoard.appendChild(card);
+        }
+
+        startTimer();
+        gameStarted = true;
+    }
+
+    function flipCard(card) {
+        if (!gameStarted || flippedCards.length >= 2 || card.classList.contains('flipped') || card.classList.contains('matched')) {
+            return;
+        }
+
+        card.classList.add('flipped');
+        flippedCards.push(card);
+
+        if (flippedCards.length === 2) {
+            checkForMatch();
+        }
+    }
+
+    function checkForMatch() {
+        const [card1, card2] = flippedCards;
+        const isMatch = card1.dataset.value === card2.dataset.value;
+
+        if (isMatch) {
+            card1.classList.add('matched');
+            card2.classList.add('matched');
+            matchedPairs++;
+            document.getElementById('matchedPairs').textContent = `${matchedPairs}/6`;
+            
+            if (matchedPairs === 6) {
+                endGame();
+            }
+            } else {
+            setTimeout(() => {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+            }, 1000);
+        }
+
+        flippedCards = [];
+    }
+
+    function startTimer() {
+        seconds = 0;
+        const timerDisplay = document.getElementById('memoryGameTimer');
+        gameTimer = setInterval(() => {
+            seconds++;
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            timerDisplay.textContent = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }, 1000);
+    }
+
+    function endGame() {
+        clearInterval(gameTimer);
+        gameStarted = false;
+        
+        const user = window.firebaseAuth.currentUser;
+        if (user) {
+            const db = window.firebase.database();
+            db.ref('memoryGameScores/' + user.uid).push({
+                date: new Date().toISOString(),
+                time: seconds,
+                pairs: 6
+            });
+        }
+
+        document.getElementById('gameContainer').innerHTML = `
+            <div class="text-center">
+                <h4 class="mb-4">Parabéns!</h4>
+                <div class="display-4 mb-4">${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}</div>
+                <p class="mb-4">Você completou o jogo da memória!</p>
+                <button class="btn btn-primary" onclick="startMemoryGame()">
+                    Jogar Novamente
+                </button>
+            </div>
+        `;
+    }
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    // --- Puzzle Game Refactored --- //
+    let puzzleSize = 3;
+    let moveCount = 0;
+    let puzzleTimer = null;
+    let puzzleSeconds = 0;
+    let tiles = []; // To hold references to tile elements if needed
+    let emptyTileCoords = { row: 0, col: 0 }; // To track the empty tile's logical position
+    const puzzleImageUrl = 'assets/profile-image.jpg';
+    let solveTimeout = null; // Add this at the top with other variables
+
+    function startPuzzleGame() {
+        const modal = new bootstrap.Modal(document.getElementById('gameModal'));
+        document.getElementById('gameModalTitle').textContent = 'Quebra-Cabeça';
+        // Inject HTML structure for the game, including the style block
+        document.getElementById('gameContainer').innerHTML = `
+            <div class="text-center">
+                <div class="mb-4 difficulty-buttons">
+                    <h5>Escolha o nível:</h5>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-success active" data-difficulty="facil" onclick="startPuzzleLevel('facil')">Fácil (3x3)</button>
+                        <button class="btn btn-outline-warning" data-difficulty="medio" onclick="startPuzzleLevel('medio')">Médio (4x4)</button>
+                        <button class="btn btn-outline-danger" data-difficulty="dificil" onclick="startPuzzleLevel('dificil')">Difícil (5x5)</button>
+                    </div>
+                </div>
+                <div id="game-board-wrapper" style="position: relative; margin: 20px auto; max-width: 400px; aspect-ratio: 1; overflow: hidden; border: 2px solid #6c63ff; border-radius: 8px; background-color: #f0f0f0;">
+                    <div id="game-board" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+                        <!-- Tiles will be generated here by JS -->
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <p>Movimentos: <span id="moveCount">0</span> | Tempo: <span id="puzzleTimer">00:00</span></p>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-primary me-2" onclick="shufflePuzzle()">
+                        <i class="fas fa-random me-1"></i>Embaralhar
+                    </button>
+                    <button class="btn btn-success" onclick="solvePuzzle()">
+                        <i class="fas fa-magic me-1"></i>Resolver (Visual)
+                    </button>
+                </div>
+            </div>
+            <style>
+                .puzzle-tile {
+                    position: absolute;
+                    border: 1px solid #bbb;
+                    background-size: cover;
+                    background-position: center;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: bold;
+                    color: white;
+                    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+                    transition: top 0.3s ease-in-out, left 0.3s ease-in-out;
+                    box-sizing: border-box;
+                }
+                .puzzle-tile.empty {
+                    background-image: none !important;
+                    background-color: #eee;
+                    cursor: default;
+                    z-index: -1;
+                    box-shadow: none;
+                    border: 1px dashed #ccc;
+                    color: transparent;
+                }
+            </style>
+        `;
+
+        // Add event listener for modal close
+        const modalElement = document.getElementById('gameModal');
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            cleanupPuzzleGame();
+        });
+
+        modal.show();
+        // Ensure the modal is fully shown before calculating sizes
+        modalElement.addEventListener('shown.bs.modal', () => {
+            startPuzzleLevel('facil'); // Start with easy level after modal is shown
+        }, { once: true }); // Run only once per modal show
+    }
+
+    function cleanupPuzzleGame() {
+        // Clear all timeouts and intervals
+        if (solveTimeout) {
+            clearTimeout(solveTimeout);
+            solveTimeout = null;
+        }
+        if (puzzleTimer) {
+            clearInterval(puzzleTimer);
+            puzzleTimer = null;
+        }
+
+        // Reset game state
+        moveCount = 0;
+        puzzleSeconds = 0;
+        tiles = [];
+        emptyTileCoords = { row: 0, col: 0 };
+
+        // Clear the game container
+        const gameContainer = document.getElementById('gameContainer');
+        if (gameContainer) {
+            gameContainer.innerHTML = '';
+        }
+
+        // Remove any event listeners
+        const gameBoard = document.getElementById('game-board');
+        if (gameBoard) {
+            const tiles = gameBoard.querySelectorAll('.puzzle-tile');
+            tiles.forEach(tile => {
+                tile.removeEventListener('click', handleTileClick);
+            });
+        }
+    }
+
+    function startPuzzleLevel(difficulty) {
+        // Clear any existing solve timeout
+        if (solveTimeout) {
+            clearTimeout(solveTimeout);
+            solveTimeout = null;
+        }
+
+        // Update active button style
+        document.querySelectorAll('.difficulty-buttons button').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.difficulty-buttons button[data-difficulty="${difficulty}"]`)?.classList.add('active');
+
+        puzzleSize = getDifficultySize(difficulty);
+        moveCount = 0;
+        puzzleSeconds = 0;
+        if (puzzleTimer) clearInterval(puzzleTimer);
+        
+        document.getElementById('moveCount').textContent = '0';
+        document.getElementById('puzzleTimer').textContent = '00:00';
+
+        createTiles(puzzleSize);
+        // Slight delay before shuffling to ensure board is rendered
+        setTimeout(shufflePuzzle, 100);
+        startPuzzleTimer();
+    }
+
+    function getDifficultySize(difficulty) {
+        switch (difficulty) {
+            case 'facil': return 3;
+            case 'medio': return 4;
+            case 'dificil': return 5;
+            default: return 3;
+        }
+    }
+
+    function createTiles(size) {
+        const gameBoard = document.getElementById('game-board');
+        if (!gameBoard) return; // Exit if board not found
+        gameBoard.innerHTML = ''; // Clear previous tiles
+        tiles = []; // Reset internal tiles array
+
+        // Use offsetWidth which reflects the actual rendered width including CSS influences
+        const boardWrapper = document.getElementById('game-board-wrapper');
+        const boardSize = boardWrapper ? boardWrapper.offsetWidth : 400; // Fallback size
+        const tilePixelSize = boardSize / size;
+
+        for (let i = 0; i < size * size; i++) {
+            const tile = document.createElement('div');
+            const row = Math.floor(i / size);
+            const col = i % size;
+            const value = i + 1; // Unique value for each tile (1 to N)
+
+            tile.classList.add('puzzle-tile');
+            tile.style.width = `${tilePixelSize}px`;
+            tile.style.height = `${tilePixelSize}px`;
+            // Set initial position using top/left
+            tile.style.top = `${row * tilePixelSize}px`;
+            tile.style.left = `${col * tilePixelSize}px`;
+            // Store logical row, col, and its correct value
+            tile.dataset.row = row;
+            tile.dataset.col = col;
+            tile.dataset.value = value; // Store the correct final value (1 to N)
+
+            if (value === size * size) { // Check if it's the last tile (N)
+                tile.classList.add('empty'); // Mark as the empty tile
+                tile.textContent = '';
+                emptyTileCoords = { row, col }; // Store initial empty coordinates
+            } else {
+                // Display the number (correct value) on the tile
+                tile.textContent = value;
+                tile.style.fontSize = `${Math.max(12, 40 / size)}px`; // Adjust font size
+
+                // Apply the profile image as the background
+                tile.style.backgroundImage = `url('assets/profile-image.jpg')`;
+                tile.style.backgroundSize = `${boardSize}px ${boardSize}px`;
+                tile.style.backgroundPosition = `-${col * tilePixelSize}px -${row * tilePixelSize}px`;
+                tile.style.backgroundColor = '#fff'; // Add white background
+                tile.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)'; // Enhance text visibility
+            }
+
+            // Add click listener to handle moves
+            tile.addEventListener('click', handleTileClick);
+            gameBoard.appendChild(tile);
+            tiles.push(tile); // Keep a reference if needed later
+        }
+    }
+
+    function handleTileClick() {
+        const clickedTile = this;
+        // Ignore clicks on the already empty tile
+        if (clickedTile.classList.contains('empty')) return;
+
+        const clickedRow = parseInt(clickedTile.dataset.row);
+        const clickedCol = parseInt(clickedTile.dataset.col);
+        const emptyRow = emptyTileCoords.row;
+        const emptyCol = emptyTileCoords.col;
+
+        // Check if the clicked tile is adjacent (horizontally or vertically) to the empty tile
+        const isAdjacent =
+            (Math.abs(clickedRow - emptyRow) === 1 && clickedCol === emptyCol) ||
+            (Math.abs(clickedCol - emptyCol) === 1 && clickedRow === emptyRow);
+
+        if (isAdjacent) {
+            moveTile(clickedTile);
+        }
+    }
+
+    function moveTile(clickedTile) {
+        const emptyTile = document.querySelector('.puzzle-tile.empty');
+        if (!emptyTile) return;
+        
+        moveCount++;
+        document.getElementById('moveCount').textContent = moveCount;
+        
+        // Get current coordinates from dataset
+        const clickedRow = parseInt(clickedTile.dataset.row);
+        const clickedCol = parseInt(clickedTile.dataset.col);
+        const emptyRow = parseInt(emptyTile.dataset.row);
+        const emptyCol = parseInt(emptyTile.dataset.col);
+
+        const boardWrapper = document.getElementById('game-board-wrapper');
+        const boardSize = boardWrapper ? boardWrapper.offsetWidth : 400;
+        const tilePixelSize = boardSize / puzzleSize;
+
+        // Temporarily disable transitions for instant movement
+        const originalClickedTransition = clickedTile.style.transition;
+        const originalEmptyTransition = emptyTile.style.transition;
+        clickedTile.style.transition = 'none';
+        emptyTile.style.transition = 'none';
+
+        // Swap positions
+        clickedTile.style.top = `${emptyRow * tilePixelSize}px`;
+        clickedTile.style.left = `${emptyCol * tilePixelSize}px`;
+        emptyTile.style.top = `${clickedRow * tilePixelSize}px`;
+        emptyTile.style.left = `${clickedCol * tilePixelSize}px`;
+
+        // Update logical positions
+        clickedTile.dataset.row = emptyRow;
+        clickedTile.dataset.col = emptyCol;
+        emptyTile.dataset.row = clickedRow;
+        emptyTile.dataset.col = clickedCol;
+
+        // Update empty tile coordinates
+        emptyTileCoords = { row: clickedRow, col: clickedCol };
+
+        // Restore transitions after a small delay
+        setTimeout(() => {
+            clickedTile.style.transition = originalClickedTransition;
+            emptyTile.style.transition = originalEmptyTransition;
+        }, 50);
+
+        // Check for win condition
+        setTimeout(() => checkWin(puzzleSize), 200);
+    }
+
+    function shufflePuzzle() {
+        // Clear any existing solve timeout
+        if (solveTimeout) {
+            clearTimeout(solveTimeout);
+            solveTimeout = null;
+        }
+
+        const gameBoard = document.getElementById('game-board');
+        if (!gameBoard) return;
+
+        // Reset move count
+        moveCount = 0;
+        document.getElementById('moveCount').textContent = '0';
+
+        // Perform multiple random valid moves to shuffle the board
+        const shuffleMoves = puzzleSize * puzzleSize * 10;
+        
+        for (let i = 0; i < shuffleMoves; i++) {
+            const possibleMoves = [];
+            const emptyRow = emptyTileCoords.row;
+            const emptyCol = emptyTileCoords.col;
+
+            // Find adjacent tiles (potential moves)
+            if (emptyRow > 0) possibleMoves.push({ r: emptyRow - 1, c: emptyCol }); // Tile above
+            if (emptyRow < puzzleSize - 1) possibleMoves.push({ r: emptyRow + 1, c: emptyCol }); // Tile below
+            if (emptyCol > 0) possibleMoves.push({ r: emptyRow, c: emptyCol - 1 }); // Tile left
+            if (emptyCol < puzzleSize - 1) possibleMoves.push({ r: emptyRow, c: emptyCol + 1 }); // Tile right
+
+            if (possibleMoves.length > 0) {
+                // Pick a random adjacent tile to swap with the empty one
+                const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                const tileToMove = document.querySelector(`.puzzle-tile[data-row="${randomMove.r}"][data-col="${randomMove.c}"]`);
+
+                if (tileToMove) {
+                    const emptyTile = document.querySelector('.puzzle-tile.empty');
+                    if (!emptyTile) continue;
+
+                    const boardWrapper = document.getElementById('game-board-wrapper');
+                    const boardSize = boardWrapper ? boardWrapper.offsetWidth : 400;
+                    const tilePixelSize = boardSize / puzzleSize;
+
+                    // Temporarily disable transitions for instant swap
+                    const originalClickedTransition = tileToMove.style.transition;
+                    const originalEmptyTransition = emptyTile.style.transition;
+                    tileToMove.style.transition = 'none';
+                    emptyTile.style.transition = 'none';
+
+                    // Swap styles (position)
+                    tileToMove.style.top = `${emptyRow * tilePixelSize}px`;
+                    tileToMove.style.left = `${emptyCol * tilePixelSize}px`;
+                    emptyTile.style.top = `${randomMove.r * tilePixelSize}px`;
+                    emptyTile.style.left = `${randomMove.c * tilePixelSize}px`;
+
+                    // Swap dataset attributes (logical position)
+                    tileToMove.dataset.row = emptyRow;
+                    tileToMove.dataset.col = emptyCol;
+                    emptyTile.dataset.row = randomMove.r;
+                    emptyTile.dataset.col = randomMove.c;
+
+                    // Update tracked empty tile coordinates
+                    emptyTileCoords = { row: randomMove.r, col: randomMove.c };
+
+                    // Restore transitions
+                    tileToMove.style.transition = originalClickedTransition;
+                    emptyTile.style.transition = originalEmptyTransition;
+                }
+            }
+        }
+    }
+
+    function checkWin(size) {
+        for (let i = 0; i < size * size; i++) {
+            const correctValue = i + 1; // The value tile should have at this position
+            const correctRow = Math.floor(i / size);
+            const correctCol = i % size;
+
+            // Find the tile currently at this correct position
+            const tileAtPosition = document.querySelector(`.puzzle-tile[data-row="${correctRow}"][data-col="${correctCol}"]`);
+
+            // If no tile is found (shouldn't happen unless empty tile logic is wrong) or
+            // if the tile at the correct position doesn't have the correct value
+            if (!tileAtPosition || parseInt(tileAtPosition.dataset.value) !== correctValue) {
+                 // Exception: the last position should contain the empty tile
+                 if (correctValue === size*size && tileAtPosition && tileAtPosition.classList.contains('empty')) {
+                     continue; // Correct, empty tile is in the last spot
+                 }
+                return false; // Not solved
+            }
+        }
+        // If the loop completes, all tiles are in the correct position
+        clearInterval(puzzleTimer);
+        showVictoryScreen();
+        return true; // Solved
+    }
+
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+    function startPuzzleTimer() {
+        if (puzzleTimer) clearInterval(puzzleTimer); // Clear existing timer
+        puzzleSeconds = 0;
+        const timerElement = document.getElementById('puzzleTimer');
+        if (!timerElement) return; // Exit if timer element not found
+
+        timerElement.textContent = '00:00'; // Reset display
+
+        puzzleTimer = setInterval(() => {
+            puzzleSeconds++;
+            const minutes = Math.floor(puzzleSeconds / 60);
+            const seconds = puzzleSeconds % 60;
+            // Update timer display
+            timerElement.textContent =
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }, 1000);
+    }
+
+    function solvePuzzle() {
+        // Clear any existing solve timeout
+        if (solveTimeout) {
+            clearTimeout(solveTimeout);
+            solveTimeout = null;
+        }
+
+        const gameBoard = document.getElementById('game-board');
+        if (!gameBoard) return;
+        const boardWrapper = document.getElementById('game-board-wrapper');
+        const boardSize = boardWrapper ? boardWrapper.offsetWidth : 400;
+        const tilePixelSize = boardSize / puzzleSize;
+
+        // Disable the solve button during the solve process
+        const solveButton = document.querySelector('button[onclick="solvePuzzle()"]');
+        if (solveButton) {
+            solveButton.disabled = true;
+        }
+
+        for (let i = 0; i < puzzleSize * puzzleSize; i++) {
+            const value = i + 1;
+            const tile = document.querySelector(`.puzzle-tile[data-value="${value}"]`);
+            if (!tile) continue;
+
+            const correctRow = Math.floor(i / puzzleSize);
+            const correctCol = i % puzzleSize;
+
+            const originalTransition = tile.style.transition;
+            tile.style.transition = 'none';
+
+            tile.style.top = `${correctRow * tilePixelSize}px`;
+            tile.style.left = `${correctCol * tilePixelSize}px`;
+            tile.dataset.row = correctRow;
+            tile.dataset.col = correctCol;
+
+            tile.style.transition = originalTransition;
+
+            if (tile.classList.contains('empty')) {
+                emptyTileCoords = { row: correctRow, col: correctCol };
+            }
+        }
+
+        clearInterval(puzzleTimer);
+        
+        // Set the timeout for showing victory screen
+        solveTimeout = setTimeout(() => {
+            showVictoryScreen(true);
+            // Re-enable the solve button
+            if (solveButton) {
+                solveButton.disabled = false;
+            }
+        }, 15000);
+    }
+
+    function showVictoryScreen(solved = false) {
+        // Clear any existing solve timeout
+        if (solveTimeout) {
+            clearTimeout(solveTimeout);
+            solveTimeout = null;
+        }
+
+        if (puzzleTimer) clearInterval(puzzleTimer);
+
+        setTimeout(() => {
+            const gameContainer = document.getElementById('gameContainer');
+            if (!gameContainer) return;
+
+            const timerDisplay = document.getElementById('puzzleTimer')?.textContent || '00:00';
+
+            gameContainer.innerHTML = `
+            <div class="text-center">
+                <h4 class="mb-4">Parabéns!</h4>
+                ${!solved ? `
+                        <div class="display-6 mb-3">Movimentos: ${moveCount}</div>
+                        <p class="mb-2 lead">Tempo: ${timerDisplay}</p>
+                ` : `
+                        <p class="mb-4 lead">O quebra-cabeça foi resolvido!</p>
+                `}
+                <button class="btn btn-primary mt-3" onclick="startPuzzleGame()">
+                    <i class="fas fa-redo me-2"></i>Jogar Novamente
+                </button>
+            </div>
+        `;
+        }, 350);
+    }
+    // --- End Puzzle Game Refactored --- //
+
+    // Reasoning Game Variables
+    const reasoningQuestions = {
+        easy: [
+            {
+                question: "Se todos os pássaros voam e o pinguim é um pássaro, então:",
+                options: [
+                    "O pinguim voa",
+                    "O pinguim não voa",
+                    "Nem todos os pássaros voam",
+                    "O pinguim é um mamífero"
+                ],
+                correct: 2
+            },
+            {
+                question: "Se 2 + 2 = 4 e 3 + 3 = 6, então 4 + 4 = ?",
+                options: ["6", "8", "10", "12"],
+                correct: 1
+            },
+            {
+                question: "Qual número completa a sequência: 2, 4, 6, 8, ?",
+                options: ["9", "10", "11", "12"],
+                correct: 1
+            }
+        ],
+        medium: [
+            {
+                question: "Se A é maior que B, e B é maior que C, então:",
+                options: [
+                    "A é maior que C",
+                    "C é maior que A",
+                    "A é igual a C",
+                    "Não é possível determinar"
+                ],
+                correct: 0
+            },
+            {
+                question: "Qual é o próximo número na sequência: 1, 4, 9, 16, ?",
+                options: ["20", "25", "30", "36"],
+                correct: 1
+            },
+            {
+                question: "Se hoje é segunda-feira, que dia será daqui a 3 dias?",
+                options: ["Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"],
+                correct: 1
+            }
+        ],
+        hard: [
+            {
+                question: "Se X + Y = 10 e X - Y = 2, qual é o valor de X?",
+                options: ["4", "5", "6", "7"],
+                correct: 2
+            },
+            {
+                question: "Qual é o próximo número na sequência: 1, 1, 2, 3, 5, 8, ?",
+                options: ["10", "11", "12", "13"],
+                correct: 3
+            },
+            {
+                question: "Se um relógio atrasa 2 minutos por hora, quanto ele atrasará em 5 horas?",
+                options: ["5 minutos", "10 minutos", "15 minutos", "20 minutos"],
+                correct: 1
+            }
+        ]
+    };
+
+    let currentReasoningLevel = 'easy';
+    let currentReasoningQuestion = 0;
+    let reasoningScore = 0;
+    let reasoningTimer = null;
+    let selectedAnswer = null;
+
+    function startReasoningGame() {
+        const modal = new bootstrap.Modal(document.getElementById('gameModal'));
+        document.getElementById('gameModalTitle').textContent = 'Jogo de Raciocínio';
+        document.getElementById('gameContainer').innerHTML = `
+            <div class="reasoning-game-container">
+                <div class="difficulty-selector mb-4">
+                    <h5>Escolha o nível de dificuldade:</h5>
+                    <div class="btn-group w-100" role="group">
+                        <button class="btn btn-outline-success" onclick="startReasoningLevel('easy')">Fácil</button>
+                        <button class="btn btn-outline-warning" onclick="startReasoningLevel('medium')">Médio</button>
+                        <button class="btn btn-outline-danger" onclick="startReasoningLevel('hard')">Difícil</button>
+                    </div>
+                </div>
+                <div class="reasoning-game-content">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 id="reasoningQuestion" class="card-title"></h5>
+                            <div id="reasoningOptions" class="mt-3"></div>
+                        </div>
+                    </div>
+                    <div class="reasoning-stats">
+                        <div class="row">
+                            <div class="col">
+                                <h5>Pontuação: <span id="reasoningScore">0</span></h5>
+                            </div>
+                            <div class="col">
+                                <h5>Tempo: <span id="reasoningTimer">60</span>s</h5>
+                            </div>
+                        </div>
+                        <div class="progress mt-2">
+                            <div id="reasoningTimerBar" class="progress-bar" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <!-- Elemento de feedback -->
+                        <div id="reasoningFeedback" class="alert mt-3" style="display: none;"></div>
+                    </div>
+                    <div class="reasoning-controls mt-3">
+                        <button class="btn btn-primary" onclick="nextReasoningQuestion()">
+                            <i class="fas fa-forward me-2"></i>Próxima Questão
+                        </button>
+                        <button class="btn btn-success" onclick="checkReasoningAnswer()">
+                            <i class="fas fa-check me-2"></i>Verificar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        modal.show();
+        startReasoningLevel('easy');
+    }
+
+    function startReasoningLevel(level) {
+        currentReasoningLevel = level;
+        currentReasoningQuestion = 0;
+        reasoningScore = 0;
+        document.getElementById('reasoningScore').textContent = reasoningScore;
+        nextReasoningQuestion();
+    }
+
+    function nextReasoningQuestion() {
+        const questions = reasoningQuestions[currentReasoningLevel];
+        if (currentReasoningQuestion >= questions.length) {
+            showReasoningResults();
+            return;
+        }
+
+        const question = questions[currentReasoningQuestion];
+        document.getElementById('reasoningQuestion').textContent = question.question;
+        
+        const optionsContainer = document.getElementById('reasoningOptions');
+        optionsContainer.innerHTML = question.options.map((option, index) => `
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="reasoningOption" 
+                    id="option${index}" value="${index}" onchange="selectReasoningAnswer(${index})">
+                <label class="form-check-label" for="option${index}">
+                    ${option}
+                </label>
+            </div>
+        `).join('');
+
+        startReasoningTimer(60);
+        selectedAnswer = null;
+    }
+
+    function selectReasoningAnswer(index) {
+        selectedAnswer = index;
+    }
+
+    function checkReasoningAnswer() {
+        if (selectedAnswer === null) {
+            // Mostrar mensagem de aviso
+            const feedbackDiv = document.getElementById('reasoningFeedback');
+            feedbackDiv.className = 'alert alert-warning mt-2';
+            feedbackDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Por favor, selecione uma resposta!';
+            feedbackDiv.style.display = 'block';
+            
+            // Esconder após 2 segundos
+            setTimeout(() => {
+                feedbackDiv.style.display = 'none';
+            }, 2000);
+            return;
+        }
+
+        const questions = reasoningQuestions[currentReasoningLevel];
+        const question = questions[currentReasoningQuestion];
+        const feedbackDiv = document.getElementById('reasoningFeedback');
+        
+        if (selectedAnswer === question.correct) {
+            reasoningScore += 10;
+            document.getElementById('reasoningScore').textContent = reasoningScore;
+            
+            // Mostrar feedback positivo
+            feedbackDiv.className = 'alert alert-success mt-2';
+            feedbackDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>Resposta correta! +10 pontos';
+        } else {
+            // Mostrar feedback negativo
+            feedbackDiv.className = 'alert alert-danger mt-2';
+            feedbackDiv.innerHTML = '<i class="fas fa-times-circle me-2"></i>Resposta incorreta! A resposta correta era: ' + 
+                question.options[question.correct];
+        }
+        
+        feedbackDiv.style.display = 'block';
+        
+        // Esconder após 3 segundos
+        setTimeout(() => {
+            feedbackDiv.style.display = 'none';
+        }, 3000);
+
+        currentReasoningQuestion++;
+        nextReasoningQuestion();
+    }
+
+    function startReasoningTimer(seconds) {
+        if (reasoningTimer) clearInterval(reasoningTimer);
+        
+        let timeLeft = seconds;
+        const timerElement = document.getElementById('reasoningTimer');
+        const timerBar = document.getElementById('reasoningTimerBar');
+        
+        reasoningTimer = setInterval(() => {
+            timeLeft--;
+            timerElement.textContent = timeLeft;
+            timerBar.style.width = `${(timeLeft / seconds) * 100}%`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(reasoningTimer);
+                checkReasoningAnswer();
+            }
+        }, 1000);
+    }
+
+    function showReasoningResults() {
+        document.getElementById('gameContainer').innerHTML = `
+            <div class="text-center">
+                <h4 class="mb-4">Resultado Final</h4>
+                <div class="display-4 mb-4">${reasoningScore} pontos</div>
+                <p class="mb-4">Você completou o nível ${currentReasoningLevel}!</p>
+                <button class="btn btn-primary" onclick="startReasoningGame()">
+                    Jogar Novamente
+                </button>
+            </div>
+        `;
+    }
+
+    // Initialize notification system when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check for pending notifications
+        checkPendingNotifications();
+        
+        // Display user events (sessions)
+        displayUserEvents();
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="dashboard_dynamic.js"></script>
+</body>
+</html>
